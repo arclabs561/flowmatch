@@ -22,9 +22,9 @@ ndarray = "0.16"
 rand = "0.9"
 rand_chacha = "0.9"
 rand_distr = "0.5"
-logp = { path = "../logp", version = "0.1.0" }
-wass = { path = "../wass", version = "0.1.1" }
-skel = { path = "../skel", version = "0.1.0" }
+logp = { git = "https://github.com/arclabs561/logp" }
+wass = { git = "https://github.com/arclabs561/wass" }
+skel = { git = "https://github.com/arclabs561/skel" }
 burn-core = { version = "0.20.0", default-features = false, features = ["std"], optional = true }
 burn-autodiff = { version = "0.20.0", default-features = false, features = ["std"], optional = true }
 burn-ndarray = { version = "0.20.0", default-features = true, optional = true }
@@ -35,12 +35,12 @@ burn-optim = { version = "0.20.0", default-features = false, features = ["std"],
 proptest = "1.5"
 criterion = { version = "0.5", features = ["html_reports"] }
 petgraph = "0.6"
-hyp = { path = "../hyp", version = "0.1.0" }
+hyp = { git = "https://github.com/arclabs561/hyp", branch = "master" }
 # Used only by examples/tests to score “structure”, not for core flowmatch APIs.
 # Note: `tier` currently requires `community` for `petgraph` types used internally.
 # We also enable `wass` so we can reuse `tier::distribution_distance::DistributionDistance`
 # (sliced Wasserstein two-sample distance) for stronger evals.
-tier = { path = "../tier", version = "0.1.0", default-features = false, features = ["cluster", "community", "wass", "knn-graph"] }
+tier = { git = "https://github.com/arclabs561/tier", branch = "master", default-features = false, features = ["cluster", "community", "wass", "knn-graph"] }
 
 [[bench]]
 name = "realdata_usgs"
