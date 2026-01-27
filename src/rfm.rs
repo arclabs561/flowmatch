@@ -95,7 +95,7 @@ pub fn greedy_bipartite_match_from_weights(w: &ArrayView2<f32>) -> Result<Vec<us
         }
     }
 
-    if perm.iter().any(|&j| j == usize::MAX) {
+    if perm.contains(&usize::MAX) {
         return Err(Error::Domain("failed to construct a full matching"));
     }
     Ok(perm)
@@ -126,13 +126,13 @@ pub fn minibatch_ot_greedy_pairing(
     if n == 0 {
         return Ok(Vec::new());
     }
-    if !(reg > 0.0) || !reg.is_finite() {
+    if !reg.is_finite() || reg <= 0.0 {
         return Err(Error::Domain("reg must be positive and finite"));
     }
     if max_iter == 0 {
         return Err(Error::Domain("max_iter must be >= 1"));
     }
-    if !(tol > 0.0) || !tol.is_finite() {
+    if !tol.is_finite() || tol <= 0.0 {
         return Err(Error::Domain("tol must be positive and finite"));
     }
 
@@ -178,16 +178,16 @@ pub fn minibatch_ot_selective_pairing(
     if n == 0 {
         return Ok(Vec::new());
     }
-    if !(reg > 0.0) || !reg.is_finite() {
+    if !reg.is_finite() || reg <= 0.0 {
         return Err(Error::Domain("reg must be positive and finite"));
     }
     if max_iter == 0 {
         return Err(Error::Domain("max_iter must be >= 1"));
     }
-    if !(tol > 0.0) || !tol.is_finite() {
+    if !tol.is_finite() || tol <= 0.0 {
         return Err(Error::Domain("tol must be positive and finite"));
     }
-    if !(keep_frac > 0.0) || !keep_frac.is_finite() {
+    if !keep_frac.is_finite() || keep_frac <= 0.0 {
         return Err(Error::Domain("keep_frac must be positive and finite"));
     }
     let keep_frac = keep_frac.min(1.0);
@@ -287,12 +287,12 @@ pub fn minibatch_rowwise_nearest_pairing(
     }
     let mut used = vec![false; n];
     let mut perm = vec![usize::MAX; n];
-    for i in 0..n {
+    for (i, perm_i) in perm.iter_mut().enumerate() {
         let xi = x.row(i);
         let mut best_j = usize::MAX;
         let mut best = f32::INFINITY;
-        for j in 0..n {
-            if used[j] {
+        for (j, used_j) in used.iter().enumerate() {
+            if *used_j {
                 continue;
             }
             let yj = y.row(j);
@@ -307,7 +307,7 @@ pub fn minibatch_rowwise_nearest_pairing(
             return Err(Error::Domain("failed to construct a full matching"));
         }
         used[best_j] = true;
-        perm[i] = best_j;
+        *perm_i = best_j;
     }
     Ok(perm)
 }
@@ -335,7 +335,7 @@ pub fn minibatch_partial_rowwise_pairing(
     if n == 0 {
         return Ok(Vec::new());
     }
-    if !(keep_frac > 0.0) || !keep_frac.is_finite() {
+    if !keep_frac.is_finite() || keep_frac <= 0.0 {
         return Err(Error::Domain("keep_frac must be positive and finite"));
     }
     let keep_frac = keep_frac.min(1.0);
@@ -379,8 +379,8 @@ pub fn minibatch_partial_rowwise_pairing(
         // Choose best unused col (not necessarily the argmin col if it's already used).
         let mut best_j = usize::MAX;
         let mut best_c = f32::INFINITY;
-        for j in 0..n {
-            if used_col[j] {
+        for (j, used_j) in used_col.iter().enumerate() {
+            if *used_j {
                 continue;
             }
             let yj = y.row(j);
@@ -425,7 +425,7 @@ pub fn minibatch_exp_greedy_pairing(
     if n == 0 {
         return Ok(Vec::new());
     }
-    if !(temp > 0.0) || !temp.is_finite() {
+    if !temp.is_finite() || temp <= 0.0 {
         return Err(Error::Domain("temp must be positive and finite"));
     }
 
@@ -470,7 +470,7 @@ pub fn minibatch_exp_greedy_pairing(
         }
     }
 
-    if perm.iter().any(|&j| j == usize::MAX) {
+    if perm.contains(&usize::MAX) {
         return Err(Error::Domain("failed to construct a full matching"));
     }
     Ok(perm)
@@ -487,7 +487,7 @@ mod tests {
         let w = array![[0.9, 0.1, 0.0], [0.2, 0.8, 0.1], [0.0, 0.1, 0.7]];
         let p = greedy_bipartite_match_from_weights(&w.view()).unwrap();
         assert_eq!(p.len(), 3);
-        let mut seen = vec![false; 3];
+        let mut seen = [false; 3];
         for &j in &p {
             assert!(j < 3);
             assert!(!seen[j]);
@@ -569,12 +569,12 @@ mod tests {
         }
         let mut used = vec![false; n];
         let mut perm = vec![usize::MAX; n];
-        for i in 0..n {
+        for (i, perm_i) in perm.iter_mut().enumerate() {
             let xi = x.row(i);
             let mut best_j = usize::MAX;
             let mut best = f32::INFINITY;
-            for j in 0..n {
-                if used[j] {
+            for (j, used_j) in used.iter().enumerate() {
+                if *used_j {
                     continue;
                 }
                 let yj = y.row(j);
@@ -588,7 +588,7 @@ mod tests {
                 return Err(Error::Domain("failed to construct a full matching"));
             }
             used[best_j] = true;
-            perm[i] = best_j;
+            *perm_i = best_j;
         }
         Ok(perm)
     }

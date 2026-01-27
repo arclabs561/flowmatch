@@ -37,7 +37,7 @@ impl CtmcGenerator {
         if p.len() != self.q.nrows() {
             return Err(Error::Shape("p length must match Q dimension"));
         }
-        if !(dt >= 0.0) || !dt.is_finite() {
+        if !dt.is_finite() || dt < 0.0 {
             return Err(Error::Domain("dt must be finite and >= 0"));
         }
         let dp = p.dot(&self.q);
@@ -57,7 +57,7 @@ pub fn validate_generator(q: &ArrayView2<f32>, tol: f32) -> Result<()> {
     if n == 0 {
         return Err(Error::Domain("Q must be non-empty"));
     }
-    if !(tol >= 0.0) || !tol.is_finite() {
+    if !tol.is_finite() || tol < 0.0 {
         return Err(Error::Domain("tol must be finite and >= 0"));
     }
     if q.iter().any(|&x| !x.is_finite()) {

@@ -130,8 +130,7 @@ fn main() -> Result<()> {
 
         // 4) SGD.
         let t = Instant::now();
-        for i in 0..batch_size {
-            let p = perm[i];
+        for (i, &p) in perm.iter().enumerate().take(batch_size) {
             let x0 = x0s.row(i);
             let y1 = ys.row(p);
 

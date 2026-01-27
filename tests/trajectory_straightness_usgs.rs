@@ -37,7 +37,6 @@ fn integrate_euler_path(
 ) -> (f32, f32) {
     // Return (arc_length, chord_length)
     let mut x = x0.clone();
-    let chord_len;
     let dt = 1.0f32 / steps as f32;
     let mut arc = 0.0f32;
 
@@ -51,7 +50,7 @@ fn integrate_euler_path(
         arc += l2(&x, &x_next);
         x = x_next;
     }
-    chord_len = l2(x0, &x);
+    let chord_len = l2(x0, &x);
     (arc, chord_len)
 }
 

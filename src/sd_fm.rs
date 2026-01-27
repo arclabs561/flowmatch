@@ -26,7 +26,7 @@ use wass::semidiscrete::{
 };
 
 fn sample_categorical_from_probs(probs: &ArrayView1<f32>, rng: &mut impl rand::Rng) -> usize {
-    debug_assert!(probs.len() > 0);
+    debug_assert!(!probs.is_empty());
     debug_assert!(probs.iter().all(|&x| x >= 0.0 && x.is_finite()));
     // Note: even if `probs.sum()` is very close to 1, float roundoff can leave the cumulative
     // sum slightly below 1.0. We therefore fall back to the last index instead of biasing to 0.
@@ -45,20 +45,15 @@ fn sample_categorical_from_probs(probs: &ArrayView1<f32>, rng: &mut impl rand::R
 ///
 /// Paper nuance: non-uniform (U-shaped) time sampling can materially affect few-step quality,
 /// because numerical error concentrates near the boundaries. We keep this explicit and testable.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Default)]
 pub enum TimestepSchedule {
     /// Uniform `t ~ U[0,1]`.
+    #[default]
     Uniform,
     /// U-shaped distribution with more mass near 0 and 1.
     ///
     /// Implemented as `t = sin^2((π/2) * u)` for `u ~ U[0,1]`, which is Beta(1/2, 1/2).
     UShaped,
-}
-
-impl Default for TimestepSchedule {
-    fn default() -> Self {
-        Self::Uniform
-    }
 }
 
 impl TimestepSchedule {
@@ -312,7 +307,7 @@ pub fn train_sd_fm_semidiscrete_linear_with_assignment(
     if bs <= 0.0 {
         return Err(Error::Domain("b must have positive total mass"));
     }
-    if !(fm_cfg.lr > 0.0) || !fm_cfg.lr.is_finite() {
+    if !fm_cfg.lr.is_finite() || fm_cfg.lr <= 0.0 {
         return Err(Error::Domain("lr must be positive and finite"));
     }
     if fm_cfg.steps == 0 || fm_cfg.batch_size == 0 {
@@ -416,7 +411,7 @@ pub fn train_rfm_minibatch_ot_linear(
     if bs <= 0.0 {
         return Err(Error::Domain("b must have positive total mass"));
     }
-    if !(fm_cfg.lr > 0.0) || !fm_cfg.lr.is_finite() {
+    if !fm_cfg.lr.is_finite() || fm_cfg.lr <= 0.0 {
         return Err(Error::Domain("lr must be positive and finite"));
     }
     if fm_cfg.steps == 0 || fm_cfg.batch_size == 0 {
@@ -427,27 +422,27 @@ pub fn train_rfm_minibatch_ot_linear(
     }
     match rfm_cfg.pairing {
         RfmMinibatchPairing::SinkhornGreedy => {
-            if !(rfm_cfg.reg > 0.0) || !rfm_cfg.reg.is_finite() {
+            if !rfm_cfg.reg.is_finite() || rfm_cfg.reg <= 0.0 {
                 return Err(Error::Domain("rfm_cfg.reg must be positive and finite"));
             }
             if rfm_cfg.max_iter == 0 {
                 return Err(Error::Domain("rfm_cfg.max_iter must be >= 1"));
             }
-            if !(rfm_cfg.tol > 0.0) || !rfm_cfg.tol.is_finite() {
+            if !rfm_cfg.tol.is_finite() || rfm_cfg.tol <= 0.0 {
                 return Err(Error::Domain("rfm_cfg.tol must be positive and finite"));
             }
         }
         RfmMinibatchPairing::SinkhornSelective { keep_frac } => {
-            if !(rfm_cfg.reg > 0.0) || !rfm_cfg.reg.is_finite() {
+            if !rfm_cfg.reg.is_finite() || rfm_cfg.reg <= 0.0 {
                 return Err(Error::Domain("rfm_cfg.reg must be positive and finite"));
             }
             if rfm_cfg.max_iter == 0 {
                 return Err(Error::Domain("rfm_cfg.max_iter must be >= 1"));
             }
-            if !(rfm_cfg.tol > 0.0) || !rfm_cfg.tol.is_finite() {
+            if !rfm_cfg.tol.is_finite() || rfm_cfg.tol <= 0.0 {
                 return Err(Error::Domain("rfm_cfg.tol must be positive and finite"));
             }
-            if !(keep_frac > 0.0) || !keep_frac.is_finite() {
+            if !keep_frac.is_finite() || keep_frac <= 0.0 {
                 return Err(Error::Domain(
                     "rfm_cfg.keep_frac must be positive and finite",
                 ));
@@ -455,12 +450,12 @@ pub fn train_rfm_minibatch_ot_linear(
         }
         RfmMinibatchPairing::RowwiseNearest => {}
         RfmMinibatchPairing::ExpGreedy { temp } => {
-            if !(temp > 0.0) || !temp.is_finite() {
+            if !temp.is_finite() || temp <= 0.0 {
                 return Err(Error::Domain("rfm_cfg.temp must be positive and finite"));
             }
         }
         RfmMinibatchPairing::PartialRowwise { keep_frac } => {
-            if !(keep_frac > 0.0) || !keep_frac.is_finite() {
+            if !keep_frac.is_finite() || keep_frac <= 0.0 {
                 return Err(Error::Domain(
                     "rfm_cfg.keep_frac must be positive and finite",
                 ));
@@ -537,8 +532,7 @@ pub fn train_rfm_minibatch_ot_linear(
         }
 
         // 4) FM regression updates along straight line between paired points.
-        for i in 0..bs {
-            let p = perm[i];
+        for (i, &p) in perm.iter().enumerate().take(bs) {
             let x0 = x0s.row(i);
             let y1 = ys.row(p);
 
@@ -678,7 +672,7 @@ mod tests {
                 p[i] = 1.0 / ((i + 1) as f32);
             }
             let s = p.sum();
-            p = p / s;
+            p /= s;
 
             let mut r1 = ChaCha8Rng::seed_from_u64(seed);
             let mut r2 = ChaCha8Rng::seed_from_u64(seed);

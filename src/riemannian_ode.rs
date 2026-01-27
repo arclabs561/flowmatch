@@ -72,7 +72,7 @@ where
     x
 }
 
-#[cfg(test)]
+#[cfg(all(test, feature = "hyp-riemannian"))]
 mod tests {
     use super::*;
     use hyp::PoincareBall;

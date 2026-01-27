@@ -11,12 +11,14 @@ homepage = "https://github.com/arclabs561/flowmatch"
 documentation = "https://docs.rs/flowmatch"
 keywords = ["flow-matching", "diffusion", "ot", "generative-modeling"]
 categories = ["science", "mathematics"]
-publish = true
+publish = false
 
 [features]
 # Default build stays `ndarray`-only; `burn` is an opt-in training backend path.
 default = []
 tier-evals = ["dep:tier"]
+## Enable experimental hyperbolic manifold ODE tests (requires compatible `hyp` + `skel` APIs).
+hyp-riemannian = []
 burn = [
     "dep:burn-core",
     "dep:burn-autodiff",
@@ -31,7 +33,7 @@ ndarray = "0.16"
 rand = "0.9"
 rand_chacha = "0.9"
 rand_distr = "0.5"
-logp = { git = "https://github.com/arclabs561/logp" }
+logp = "0.1.0"
 wass = { git = "https://github.com/arclabs561/wass" }
 skel = { git = "https://github.com/arclabs561/skel" }
 tier = { git = "https://github.com/arclabs561/tier", branch = "master", default-features = false, features = ["cluster", "community", "knn-graph", "metrics", "wass"], optional = true }

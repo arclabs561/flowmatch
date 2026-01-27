@@ -21,7 +21,7 @@ pub fn jensen_shannon_divergence_histogram(p: &[f32], q: &[f32], tol: f32) -> Re
     if p.len() != q.len() {
         return Err(Error::Shape("p and q must have the same length"));
     }
-    if !(tol > 0.0) || !tol.is_finite() {
+    if !tol.is_finite() || tol <= 0.0 {
         return Err(Error::Domain("tol must be positive and finite"));
     }
     if p.iter().any(|&x| x < 0.0 || !x.is_finite()) || q.iter().any(|&x| x < 0.0 || !x.is_finite())
@@ -31,7 +31,7 @@ pub fn jensen_shannon_divergence_histogram(p: &[f32], q: &[f32], tol: f32) -> Re
 
     let sp: f64 = p.iter().map(|&x| x as f64).sum();
     let sq: f64 = q.iter().map(|&x| x as f64).sum();
-    if !(sp > 0.0) || !(sq > 0.0) {
+    if sp <= 0.0 || sq <= 0.0 {
         return Err(Error::Domain("p and q must have positive total mass"));
     }
 
@@ -83,13 +83,13 @@ pub fn ot_cost_samples_to_weighted_support(
     if bs <= 0.0 {
         return Err(Error::Domain("b must have positive total mass"));
     }
-    if !(reg > 0.0) || !reg.is_finite() {
+    if !reg.is_finite() || reg <= 0.0 {
         return Err(Error::Domain("reg must be positive and finite"));
     }
     if max_iter == 0 {
         return Err(Error::Domain("max_iter must be >= 1"));
     }
-    if !(tol > 0.0) || !tol.is_finite() {
+    if !tol.is_finite() || tol <= 0.0 {
         return Err(Error::Domain("tol must be positive and finite"));
     }
 

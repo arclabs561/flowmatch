@@ -13,7 +13,7 @@ pub fn validate_simplex(p: &[f32], tol: f32) -> Result<()> {
     if p.is_empty() {
         return Err(Error::Domain("simplex vector must be non-empty"));
     }
-    if !(tol >= 0.0) || !tol.is_finite() {
+    if !tol.is_finite() || tol < 0.0 {
         return Err(Error::Domain("tol must be finite and >= 0"));
     }
     if p.iter().any(|&x| !x.is_finite()) {
@@ -43,7 +43,7 @@ pub fn normalize_simplex(p: &[f32]) -> Result<Vec<f32>> {
         return Err(Error::Domain("vector must be nonnegative to normalize"));
     }
     let s: f32 = p.iter().sum();
-    if !(s > 0.0) {
+    if s <= 0.0 {
         return Err(Error::Domain("vector must have positive total mass"));
     }
     Ok(p.iter().map(|&x| x / s).collect())
@@ -74,7 +74,7 @@ pub fn sample_dirichlet(alpha: &[f32], rng: &mut impl rand::Rng) -> Result<Vec<f
     if alpha.is_empty() {
         return Err(Error::Domain("alpha must be non-empty"));
     }
-    if alpha.iter().any(|&a| !(a > 0.0) || !a.is_finite()) {
+    if alpha.iter().any(|&a| !a.is_finite() || a <= 0.0) {
         return Err(Error::Domain("Dirichlet alpha must be positive and finite"));
     }
 
@@ -87,7 +87,7 @@ pub fn sample_dirichlet(alpha: &[f32], rng: &mut impl rand::Rng) -> Result<Vec<f
         xs[i] = x as f32;
         s += x;
     }
-    if !(s > 0.0) {
+    if s <= 0.0 {
         return Err(Error::Domain("Dirichlet sampling produced zero total mass"));
     }
     for v in &mut xs {

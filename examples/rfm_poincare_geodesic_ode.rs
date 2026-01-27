@@ -3,12 +3,23 @@
 //! We integrate a “geodesic velocity field” starting at `x0` with initial tangent `v0`. The true
 //! solution at t=1 is `exp_{x0}(v0)`. Heun requires parallel transport to average tangent vectors.
 
+#[cfg(not(feature = "hyp-riemannian"))]
+fn main() {
+    eprintln!("This example requires `--features hyp-riemannian` (experimental).");
+}
+
+#[cfg(feature = "hyp-riemannian")]
 use flowmatch::ode::OdeMethod;
+#[cfg(feature = "hyp-riemannian")]
 use flowmatch::riemannian_ode::integrate_fixed_manifold;
+#[cfg(feature = "hyp-riemannian")]
 use hyp::PoincareBall;
+#[cfg(feature = "hyp-riemannian")]
 use ndarray::Array1;
+#[cfg(feature = "hyp-riemannian")]
 use skel::Manifold;
 
+#[cfg(feature = "hyp-riemannian")]
 fn main() {
     let m = PoincareBall::<f64>::new(1.0);
 
