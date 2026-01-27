@@ -78,19 +78,19 @@ cargo run -p flowmatch --example rfm_usgs_earthquakes_sphere
 RFM demo on **real USGS earthquake locations**, evaluated via **cluster-mass structure** (uses `tier`):
 
 ```bash
-cargo run -p flowmatch --example rfm_usgs_earthquakes_cluster_mass
+cargo run -p flowmatch --example rfm_usgs_earthquakes_cluster_mass --features tier-evals
 ```
 
 Full engine composition demo (flowmatch + tier + jin): kNN graph → Leiden communities:
 
 ```bash
-cargo run -p flowmatch --example rfm_usgs_knn_leiden
+cargo run -p flowmatch --example rfm_usgs_knn_leiden --features tier-evals
 ```
 
 Full pipeline report (all metrics + timings, including deterministic exact-kNN Leiden and optional HNSW-kNN):
 
 ```bash
-cargo run -p flowmatch --example rfm_usgs_full_pipeline_report
+cargo run -p flowmatch --example rfm_usgs_full_pipeline_report --features tier-evals
 ```
 
 NFE/steps curve (paper-style “few-step” evaluation):

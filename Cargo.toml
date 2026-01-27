@@ -2,12 +2,21 @@
 name = "flowmatch"
 version = "0.1.0"
 edition = "2021"
+rust-version = "1.80"
 license = "MIT OR Apache-2.0"
+authors = ["Arc <attobop@gmail.com>"]
+description = "Flow matching primitives (ndarray-first; backend-agnostic) with semidiscrete FM and RFM experiments."
+repository = "https://github.com/arclabs561/flowmatch"
+homepage = "https://github.com/arclabs561/flowmatch"
+documentation = "https://docs.rs/flowmatch"
+keywords = ["flow-matching", "diffusion", "ot", "generative-modeling"]
+categories = ["science", "mathematics"]
 publish = true
 
 [features]
 # Default build stays `ndarray`-only; `burn` is an opt-in training backend path.
 default = []
+tier-evals = ["dep:tier"]
 burn = [
     "dep:burn-core",
     "dep:burn-autodiff",
@@ -25,6 +34,7 @@ rand_distr = "0.5"
 logp = { git = "https://github.com/arclabs561/logp" }
 wass = { git = "https://github.com/arclabs561/wass" }
 skel = { git = "https://github.com/arclabs561/skel" }
+tier = { git = "https://github.com/arclabs561/tier", branch = "master", default-features = false, features = ["cluster", "community", "knn-graph", "metrics", "wass"], optional = true }
 burn-core = { version = "0.20.0", default-features = false, features = ["std"], optional = true }
 burn-autodiff = { version = "0.20.0", default-features = false, features = ["std"], optional = true }
 burn-ndarray = { version = "0.20.0", default-features = true, optional = true }
@@ -37,6 +47,21 @@ criterion = { version = "0.5", features = ["html_reports"] }
 petgraph = "0.6"
 hyp = { git = "https://github.com/arclabs561/hyp", branch = "master" }
 
+[[example]]
+name = "rfm_usgs_earthquakes_cluster_mass"
+path = "examples/rfm_usgs_earthquakes_cluster_mass.rs"
+required-features = ["tier-evals"]
+
+[[example]]
+name = "rfm_usgs_knn_leiden"
+path = "examples/rfm_usgs_knn_leiden.rs"
+required-features = ["tier-evals"]
+
+[[example]]
+name = "rfm_usgs_full_pipeline_report"
+path = "examples/rfm_usgs_full_pipeline_report.rs"
+required-features = ["tier-evals"]
+
 [[bench]]
 name = "realdata_torsions"
 harness = false
@@ -44,4 +69,19 @@ harness = false
 [[bench]]
 name = "pairing"
 harness = false
+
+[[bench]]
+name = "realdata_usgs"
+harness = false
+required-features = ["tier-evals"]
+
+[[test]]
+name = "rfm_usgs_cluster_mass_e2e"
+path = "tests/rfm_usgs_cluster_mass_e2e.rs"
+required-features = ["tier-evals"]
+
+[[test]]
+name = "rfm_usgs_leiden_exact_knn_e2e"
+path = "tests/rfm_usgs_leiden_exact_knn_e2e.rs"
+required-features = ["tier-evals"]
 
