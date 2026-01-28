@@ -49,7 +49,7 @@ Also useful as an applications-oriented map (especially for discrete / non-Eucli
   Link: [arXiv](https://arxiv.org/abs/2507.17731)  
   Curated resources: [Awesome list](https://github.com/Violet24K/Awesome-Flow-Matching-Meets-Biology)
 
-### Roadmap (not implemented yet)
+### Extensions (related objectives)
 
 - Chen & Lipman, *Flow Matching on General Geometries* (arXiv:2302.03660) — Riemannian FM  
   Link: [arXiv](https://arxiv.org/abs/2302.03660)
