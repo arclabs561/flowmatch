@@ -2,6 +2,9 @@
 
 Flow matching as a small, backend-agnostic Rust library primitive.
 
+This crate exists to make a **minimal, readable** reference implementation for a few flow-matching
+variants that are useful as building blocks in larger pipelines (and as a testbed for evaluation).
+
 This crate currently focuses on a **semidiscrete flow matching** setup:
 
 - **Discrete target support**: a finite set of prototypes \(y_j\) with weights \(b_j\).
@@ -25,6 +28,12 @@ Related primitives implemented in this crate:
 Related (adjacent meaning of “distribution matching”):
 - `decipher/`: symbolic distribution matching for classical text deciphers (letter-frequency scoring, etc.). See `canon/topics/distribution-matching.md`.
 
+## Best starting points (examples)
+
+- **Semidiscrete FM baseline**: `sd_fm_semidiscrete_linear` (end-to-end, intentionally simple).
+- **RFM on real geodata**: `rfm_usgs_full_pipeline_report` (flowmatch + tier + jin; includes metrics + timings).
+- **Cluster-mass evaluation**: `rfm_usgs_earthquakes_cluster_mass` (structure-aware scoring; `tier-evals` feature).
+
 ### References (why this crate is called `flowmatch`)
 
 These are the conceptual anchors for the objective + design space:
@@ -38,9 +47,9 @@ Also useful as an applications-oriented map (especially for discrete / non-Eucli
 
 - Li et al., *Flow Matching Meets Biology and Life Science: A Survey* (arXiv:2507.17731, 2025).  
   Link: [arXiv](https://arxiv.org/abs/2507.17731)  
-  Curated resources: `https://github.com/Violet24K/Awesome-Flow-Matching-Meets-Biology`
+  Curated resources: [Awesome list](https://github.com/Violet24K/Awesome-Flow-Matching-Meets-Biology)
 
-Related work you surfaced that’s **not implemented** in this crate (yet), but is a good roadmap:
+### Roadmap (not implemented yet)
 
 - Chen & Lipman, *Flow Matching on General Geometries* (arXiv:2302.03660) — Riemannian FM  
   Link: [arXiv](https://arxiv.org/abs/2302.03660)
