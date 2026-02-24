@@ -33,10 +33,10 @@ ndarray = "0.16"
 rand = "0.9"
 rand_chacha = "0.9"
 rand_distr = "0.5"
-logp = { path = "../logp" }
-wass = { path = "../wass" }
-skel = { path = "../skel" }
-tier = { path = "../tier", default-features = false, features = ["cluster", "community", "knn-graph", "metrics", "wass"], optional = true }
+logp = "0.1.0"
+wass = { git = "https://github.com/arclabs561/wass", tag = "v0.1.0" }
+skel = { git = "https://github.com/arclabs561/skel", tag = "v0.1.0" }
+tier = { version = "0.1.0", default-features = false, features = ["cluster", "community", "knn-graph", "metrics", "wass"], optional = true }
 burn-core = { version = "0.20.0", default-features = false, features = ["std"], optional = true }
 burn-autodiff = { version = "0.20.0", default-features = false, features = ["std"], optional = true }
 burn-ndarray = { version = "0.20.0", default-features = true, optional = true }
@@ -47,7 +47,7 @@ burn-optim = { version = "0.20.0", default-features = false, features = ["std"],
 proptest = "1.5"
 criterion = { version = "0.5", features = ["html_reports"] }
 petgraph = "0.6"
-hyp = { path = "../hyp" }
+hyp = "0.1.0"
 
 [[example]]
 name = "rfm_usgs_earthquakes_cluster_mass"

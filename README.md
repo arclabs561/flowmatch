@@ -2,6 +2,18 @@
 
 Flow matching as a small, backend-agnostic Rust library primitive.
 
+## Start Here
+
+If you only run one thing, run the semidiscrete linear baseline:
+
+```bash
+cargo run -p flowmatch --example sd_fm_semidiscrete_linear
+```
+
+This trains a simple flow to match a discrete target distribution.
+
+## What it is
+
 This crate exists to make a **minimal, readable** reference implementation for a few flow-matching
 variants that are useful as building blocks in larger pipelines (and as a testbed for evaluation).
 
@@ -180,4 +192,3 @@ Run the Burn-backed toy examples:
 cargo run -p flowmatch --example burn_sd_fm_semidiscrete_linear --features burn
 cargo run -p flowmatch --example burn_rfm_minibatch_ot_linear --features burn
 ```
-
