@@ -17,8 +17,8 @@ publish = false
 # Default build stays `ndarray`-only; `burn` is an opt-in training backend path.
 default = []
 tier-evals = ["dep:tier"]
-## Enable experimental hyperbolic manifold ODE tests (requires compatible `hyp` + `skel` APIs).
-hyp-riemannian = []
+## Enable experimental hyperbolic manifold ODE tests (requires compatible `hyperball` + `skel` APIs).
+riemannian = []
 burn = [
     "dep:burn-core",
     "dep:burn-autodiff",
@@ -47,7 +47,7 @@ burn-optim = { version = "0.20.0", default-features = false, features = ["std"],
 proptest = "1.5"
 criterion = { version = "0.5", features = ["html_reports"] }
 petgraph = "0.6"
-hyp = "0.1.0"
+hyperball = { path = "../hyperball" }
 
 [[example]]
 name = "rfm_usgs_earthquakes_cluster_mass"

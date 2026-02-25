@@ -296,6 +296,15 @@ pub fn train_rfm_minibatch_ot_linear_burn(
                         rfm_cfg.tol,
                     )?
                 }
+                crate::sd_fm::RfmMinibatchPairing::SinkhornGreedyNormalized => {
+                    crate::rfm::minibatch_ot_greedy_pairing_normalized(
+                        &x0s.view(),
+                        &ys.view(),
+                        rfm_cfg.reg,
+                        rfm_cfg.max_iter,
+                        rfm_cfg.tol,
+                    )?
+                }
                 crate::sd_fm::RfmMinibatchPairing::SinkhornSelective { keep_frac } => {
                     crate::rfm::minibatch_ot_selective_pairing(
                         &x0s.view(),

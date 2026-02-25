@@ -77,10 +77,10 @@ where
     x
 }
 
-#[cfg(all(test, feature = "hyp-riemannian"))]
+#[cfg(all(test, feature = "riemannian"))]
 mod tests {
     use super::*;
-    use hyp::PoincareBall;
+    use hyperball::PoincareBall;
     use proptest::prelude::*;
 
     fn poincare_point() -> impl Strategy<Value = Array1<f64>> {
