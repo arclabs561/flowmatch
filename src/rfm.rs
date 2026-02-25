@@ -237,14 +237,12 @@ pub fn minibatch_ot_selective_pairing(
     rows.sort_by(|&i, &j| row_exp_cost[i].total_cmp(&row_exp_cost[j])); // asc
     let selected = &rows[..keep];
 
-    // Assign selected rows one-to-one, greedily by weight.
-    let mut selected_sorted = selected.to_vec();
-    selected_sorted.sort_by(|&i, &j| row_exp_cost[i].total_cmp(&row_exp_cost[j])); // asc
-
+    // Assign selected rows one-to-one, greedily by Sinkhorn plan weight.
+    // `selected` is already sorted by ascending expected cost (easiest rows first).
     let mut used_col = vec![false; n];
     let mut perm = vec![usize::MAX; n];
 
-    for &i in &selected_sorted {
+    for &i in selected {
         let mut best_j = usize::MAX;
         let mut best_w = -1.0f32;
         for j in 0..n {
@@ -378,14 +376,12 @@ pub fn minibatch_partial_rowwise_pairing(
     rows.sort_by(|&i, &j| best[i].1.total_cmp(&best[j].1)); // ascending by cost
     let selected = &rows[..keep];
 
-    // One-to-one matching for selected rows, greedy by their best cost.
-    let mut selected_sorted = selected.to_vec();
-    selected_sorted.sort_by(|&i, &j| best[i].1.total_cmp(&best[j].1));
-
+    // One-to-one matching for selected rows, greedy by their NN cost.
+    // `selected` is already sorted by ascending NN cost (easiest rows first).
     let mut used_col = vec![false; n];
     let mut perm = vec![usize::MAX; n];
 
-    for &i in &selected_sorted {
+    for &i in selected {
         let xi = x.row(i);
         // Choose best unused col (not necessarily the argmin col if it's already used).
         let mut best_j = usize::MAX;
