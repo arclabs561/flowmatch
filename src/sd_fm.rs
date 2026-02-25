@@ -150,7 +150,10 @@ pub struct RfmMinibatchOtConfig {
 impl Default for RfmMinibatchOtConfig {
     fn default() -> Self {
         Self {
-            reg: 0.2,
+            // Note: `reg` is the entropic regularization for Sinkhorn, and its natural scale
+            // depends on the cost metric.  With squared L2 cost (||x-y||^2), costs for N(0,1)
+            // data in d dimensions are O(d), so `reg ~ 1.0` is a reasonable default.
+            reg: 1.0,
             max_iter: 6_000,
             tol: 2e-3,
             pairing: RfmMinibatchPairing::SinkhornGreedy,
@@ -873,7 +876,7 @@ mod tests {
                 t_schedule: TimestepSchedule::Uniform,
             };
             let rfm_cfg = RfmMinibatchOtConfig {
-                reg: 0.2,
+                reg: 1.0,
                 max_iter: 5_000,
                 tol: 2e-2,
                 pairing: RfmMinibatchPairing::SinkhornGreedy,
@@ -969,7 +972,7 @@ mod tests {
                 t_schedule: TimestepSchedule::Uniform,
             };
             let rfm_cfg = RfmMinibatchOtConfig {
-                reg: 0.2,
+                reg: 1.0,
                 max_iter: 5_000,
                 tol: 2e-2,
                 pairing: RfmMinibatchPairing::SinkhornSelective { keep_frac: 0.8 },

@@ -125,7 +125,7 @@ fn bench_realdata_usgs(c: &mut Criterion) {
             t_schedule: TimestepSchedule::Uniform,
         };
         let rfm_cfg = RfmMinibatchOtConfig {
-            reg: 0.2,
+            reg: 1.0,
             max_iter: 800,
             tol: 2e-3,
             pairing: RfmMinibatchPairing::SinkhornGreedy,

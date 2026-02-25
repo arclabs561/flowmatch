@@ -163,7 +163,7 @@ fn rfm_usgs_cluster_mass_js_improves_vs_random_sphere() -> Result<()> {
         t_schedule: TimestepSchedule::Uniform,
     };
     let rfm_cfg = RfmMinibatchOtConfig {
-        reg: 0.2,
+        reg: 1.0,
         max_iter: 1_500,
         tol: 2e-3,
         pairing: RfmMinibatchPairing::SinkhornGreedy,

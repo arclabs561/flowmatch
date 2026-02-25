@@ -156,7 +156,7 @@ fn rfm_usgs_improves_leiden_structure_js_under_exact_knn() -> Result<()> {
         t_schedule: TimestepSchedule::Uniform,
     };
     let rfm_cfg = RfmMinibatchOtConfig {
-        reg: 0.2,
+        reg: 1.0,
         max_iter: 1_500,
         tol: 2e-3,
         // New coupling discipline: avoid forcing rare/outlier targets inside minibatches.

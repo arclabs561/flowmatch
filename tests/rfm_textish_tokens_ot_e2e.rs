@@ -184,7 +184,7 @@ fn rfm_textish_tokens_reduces_ot_cost_vs_zero_field() {
     }
 
     let rfm_cfg = RfmMinibatchOtConfig {
-        reg: 0.25,
+        reg: 1.5,
         max_iter: 6000,
         tol: 2e-3,
         pairing: RfmMinibatchPairing::SinkhornGreedy,

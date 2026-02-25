@@ -25,7 +25,13 @@ fn l2(a: &ArrayView1<'_, f32>, b: &ArrayView1<'_, f32>) -> f32 {
     l2_squared(a, b).sqrt()
 }
 
-fn euclidean_cost_matrix_from_views(
+/// Build a **squared** Euclidean cost matrix from two point-cloud views.
+///
+/// Uses `C_ij = ||x_i - y_j||^2` (squared L2), which is the correct ground cost for
+/// 2-Wasserstein (W2) optimal transport.  The OT-CFM literature (Tong et al. 2023,
+/// Lipman et al. 2024 guide, torchcfm reference) uses squared cost; the Benamou-Brenier
+/// dynamic formulation that yields straight-line optimal paths requires it.
+fn sq_euclidean_cost_matrix_from_views(
     x: &ArrayView2<f32>,
     y: &ArrayView2<f32>,
 ) -> Result<Array2<f32>> {
@@ -41,9 +47,7 @@ fn euclidean_cost_matrix_from_views(
         let xi = x.row(i);
         for j in 0..n {
             let yj = y.row(j);
-            // Match `wass::euclidean_cost_matrix`: this is Euclidean distance (sqrt), not squared.
-            // This matters for Sinkhorn and for any exp(-C / ε) transformation.
-            cost[[i, j]] = l2(&xi, &yj);
+            cost[[i, j]] = l2_squared(&xi, &yj);
         }
     }
     Ok(cost)
@@ -135,10 +139,13 @@ pub fn minibatch_ot_greedy_pairing(
     if !tol.is_finite() || tol <= 0.0 {
         return Err(Error::Domain("tol must be positive and finite"));
     }
+    if x.iter().any(|&v| !v.is_finite()) || y.iter().any(|&v| !v.is_finite()) {
+        return Err(Error::Domain("x/y contain NaN/Inf"));
+    }
 
     // Avoid allocating/copying x/y (views) just to build the cost matrix.
     // This matters a lot for non-Sinkhorn pairing paths where cost construction dominates.
-    let cost = euclidean_cost_matrix_from_views(x, y)?;
+    let cost = sq_euclidean_cost_matrix_from_views(x, y)?;
 
     // Uniform marginals.
     let a = Array1::<f32>::from_elem(n, 1.0 / n as f32);
@@ -191,8 +198,11 @@ pub fn minibatch_ot_selective_pairing(
         return Err(Error::Domain("keep_frac must be positive and finite"));
     }
     let keep_frac = keep_frac.min(1.0);
+    if x.iter().any(|&v| !v.is_finite()) || y.iter().any(|&v| !v.is_finite()) {
+        return Err(Error::Domain("x/y contain NaN/Inf"));
+    }
 
-    let cost = euclidean_cost_matrix_from_views(x, y)?;
+    let cost = sq_euclidean_cost_matrix_from_views(x, y)?;
     let a = Array1::<f32>::from_elem(n, 1.0 / n as f32);
     let b = Array1::<f32>::from_elem(n, 1.0 / n as f32);
     let (plan, _dist, _iters) =
@@ -205,7 +215,7 @@ pub fn minibatch_ot_selective_pairing(
     for i in 0..n {
         // expected cost
         let mut e = 0.0f32;
-        // nearest neighbor by cost (squared cost is fine for argmin; cost matrix is sqrt-L2 but monotone)
+        // nearest neighbor by cost (cost matrix is now squared L2; argmin is the same)
         let mut best_j = 0usize;
         let mut best_c = f32::INFINITY;
         for j in 0..n {
@@ -436,6 +446,10 @@ pub fn minibatch_exp_greedy_pairing(
     // Sort in log-domain to avoid exp() underflow for large distances / small temperatures.
     // Since exp is monotonic, sorting by -dist/temp (descending) gives the same order as
     // sorting by exp(-dist/temp) (descending), but without the f32 underflow-to-zero problem.
+    //
+    // Note: exp-greedy uses L2 distance (not squared) for the Gibbs kernel, because `temp`
+    // is user-facing and its scale is defined relative to L2.  Sinkhorn-based pairings use
+    // squared L2 cost (matching the W2 OT-CFM formulation); see `sq_euclidean_cost_matrix_from_views`.
     let d = x.ncols();
     let mut edges: Vec<(usize, usize, f32)> = Vec::with_capacity(n * n);
     for i in 0..n {
@@ -502,8 +516,8 @@ mod tests {
         let x = array![[0.0f32, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]];
         let y = array![[0.0f32, 0.0], [1.0, 0.1], [0.1, 1.0], [1.0, 1.0]];
 
-        let p1 = minibatch_ot_greedy_pairing(&x.view(), &y.view(), 0.2, 5000, 2e-3).unwrap();
-        let p2 = minibatch_ot_greedy_pairing(&x.view(), &y.view(), 0.2, 5000, 2e-3).unwrap();
+        let p1 = minibatch_ot_greedy_pairing(&x.view(), &y.view(), 1.0, 5000, 2e-3).unwrap();
+        let p2 = minibatch_ot_greedy_pairing(&x.view(), &y.view(), 1.0, 5000, 2e-3).unwrap();
         assert_eq!(p1, p2);
 
         let mut seen = vec![false; p1.len()];
@@ -595,11 +609,11 @@ mod tests {
         Ok(perm)
     }
 
-    // This is the exact seam we broke previously: we must match `wass::euclidean_cost_matrix`
-    // semantics (it uses Euclidean distance, i.e. sqrt of squared distance).
+    // Verify that `sq_euclidean_cost_matrix_from_views` produces the squared L2 cost.
+    // `wass::euclidean_cost_matrix` returns L2 (sqrt), so ours should equal wass^2.
     proptest! {
         #[test]
-        fn prop_cost_matrix_matches_wass(
+        fn prop_sq_cost_matrix_is_wass_squared(
             n in 1usize..8,
             d in 1usize..8,
             seed in any::<u64>(),
@@ -618,15 +632,16 @@ mod tests {
                 }
             }
 
-            let cost_wass = wass::euclidean_cost_matrix(&x, &y);
-            let cost_ours = euclidean_cost_matrix_from_views(&x.view(), &y.view()).unwrap();
+            let cost_wass_l2 = wass::euclidean_cost_matrix(&x, &y);
+            let cost_ours_sq = sq_euclidean_cost_matrix_from_views(&x.view(), &y.view()).unwrap();
 
-            prop_assert_eq!(cost_wass.shape(), cost_ours.shape());
+            prop_assert_eq!(cost_wass_l2.shape(), cost_ours_sq.shape());
             for i in 0..n {
                 for j in 0..n {
-                    let a = cost_wass[[i, j]];
-                    let b = cost_ours[[i, j]];
-                    prop_assert!((a - b).abs() <= 1e-6, "mismatch at ({i},{j}): wass={a} ours={b}");
+                    let wass_sq = cost_wass_l2[[i, j]] * cost_wass_l2[[i, j]];
+                    let ours = cost_ours_sq[[i, j]];
+                    prop_assert!((wass_sq - ours).abs() <= 1e-5,
+                        "mismatch at ({i},{j}): wass^2={wass_sq} ours={ours}");
                 }
             }
         }
@@ -812,7 +827,7 @@ mod tests {
             }
 
             // Use stable parameters to avoid proptest flake.
-            let reg = 0.2;
+            let reg = 1.0;
             let max_iter = 5_000;
             let tol = 2e-3;
 
@@ -891,9 +906,9 @@ mod tests {
 
         // Sinkhorn selective: same expectation.
         let s_full =
-            minibatch_ot_selective_pairing(&x.view(), &y.view(), 0.2, 5_000, 2e-3, 1.0).unwrap();
+            minibatch_ot_selective_pairing(&x.view(), &y.view(), 1.0, 5_000, 2e-3, 1.0).unwrap();
         let s_half =
-            minibatch_ot_selective_pairing(&x.view(), &y.view(), 0.2, 5_000, 2e-3, 0.5).unwrap();
+            minibatch_ot_selective_pairing(&x.view(), &y.view(), 1.0, 5_000, 2e-3, 0.5).unwrap();
         assert_eq!(count_outlier(&s_full), 1);
         assert_eq!(count_outlier(&s_half), 0);
     }
@@ -1076,9 +1091,9 @@ mod tests {
             y[[n - 1, k]] = 1_000.0;
         }
 
-        let full = minibatch_ot_greedy_pairing(&x.view(), &y.view(), 0.2, 2_000, 1e-4).unwrap();
+        let full = minibatch_ot_greedy_pairing(&x.view(), &y.view(), 1.0, 2_000, 1e-4).unwrap();
         let sel =
-            minibatch_ot_selective_pairing(&x.view(), &y.view(), 0.2, 2_000, 1e-4, 0.8).unwrap();
+            minibatch_ot_selective_pairing(&x.view(), &y.view(), 1.0, 2_000, 1e-4, 0.8).unwrap();
 
         // Full one-to-one must use every column, thus must include outlier column exactly once.
         assert_eq!(full.iter().filter(|&&j| j == n - 1).count(), 1);
@@ -1116,16 +1131,16 @@ mod tests {
             prop_assert!(minibatch_rowwise_nearest_pairing(&x.view(), &y_bad.view()).is_err());
             prop_assert!(minibatch_partial_rowwise_pairing(&x.view(), &y_bad.view(), 0.8).is_err());
             prop_assert!(minibatch_exp_greedy_pairing(&x.view(), &y_bad.view(), 0.2).is_err());
-            prop_assert!(minibatch_ot_greedy_pairing(&x.view(), &y_bad.view(), 0.2, 100, 1e-2).is_err());
-            prop_assert!(minibatch_ot_selective_pairing(&x.view(), &y_bad.view(), 0.2, 100, 1e-2, 0.8).is_err());
+            prop_assert!(minibatch_ot_greedy_pairing(&x.view(), &y_bad.view(), 1.0, 100, 1e-2).is_err());
+            prop_assert!(minibatch_ot_selective_pairing(&x.view(), &y_bad.view(), 1.0, 100, 1e-2, 0.8).is_err());
 
             // NaN should error for fast pairings (and should not panic for Sinkhorn pairings).
             x[[0, 0]] = f32::NAN;
             prop_assert!(minibatch_rowwise_nearest_pairing(&x.view(), &y.view()).is_err());
             prop_assert!(minibatch_partial_rowwise_pairing(&x.view(), &y.view(), 0.8).is_err());
             prop_assert!(minibatch_exp_greedy_pairing(&x.view(), &y.view(), 0.2).is_err());
-            prop_assert!(minibatch_ot_greedy_pairing(&x.view(), &y.view(), 0.2, 200, 1e-2).is_err());
-            prop_assert!(minibatch_ot_selective_pairing(&x.view(), &y.view(), 0.2, 200, 1e-2, 0.8).is_err());
+            prop_assert!(minibatch_ot_greedy_pairing(&x.view(), &y.view(), 1.0, 200, 1e-2).is_err());
+            prop_assert!(minibatch_ot_selective_pairing(&x.view(), &y.view(), 1.0, 200, 1e-2, 0.8).is_err());
         }
     }
 }

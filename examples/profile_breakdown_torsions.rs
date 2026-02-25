@@ -70,7 +70,7 @@ fn main() -> Result<()> {
     let batch_size = 64usize;
     let lr = 2e-2f32;
     let rfm_cfg = RfmMinibatchOtConfig {
-        reg: 0.2,
+        reg: 1.0,
         max_iter: 2_000,
         tol: 2e-3,
         pairing: flowmatch::sd_fm::RfmMinibatchPairing::SinkhornGreedy,

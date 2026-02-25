@@ -127,7 +127,7 @@ fn main() -> Result<()> {
     };
     let rfm_cfg = RfmMinibatchOtConfig {
         // Slightly “easier” coupling settings to reduce convergence failures in small minibatches.
-        reg: 0.2,
+        reg: 1.0,
         max_iter: 2_000,
         tol: 2e-3,
         pairing: RfmMinibatchPairing::SinkhornGreedy,

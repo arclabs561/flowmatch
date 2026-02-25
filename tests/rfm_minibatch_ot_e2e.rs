@@ -38,7 +38,8 @@ fn rfm_minibatch_ot_trains_and_moves_toward_weighted_targets() {
     }
 
     let rfm_cfg = RfmMinibatchOtConfig {
-        reg: 0.25,
+        // reg is scaled for squared L2 cost (costs ~O(d) for N(0,1) data).
+        reg: 2.0,
         max_iter: 8000,
         tol: 2e-3,
         pairing: RfmMinibatchPairing::SinkhornGreedy,

@@ -195,7 +195,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     let rfm_cfg = RfmMinibatchOtConfig {
-        reg: 0.25,
+        reg: 1.5,
         max_iter: 6000,
         tol: 2e-3,
         pairing: RfmMinibatchPairing::SinkhornGreedy,

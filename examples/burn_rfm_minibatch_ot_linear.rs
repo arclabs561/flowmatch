@@ -26,7 +26,7 @@ fn main() {
     let b = Array1::<f32>::from_elem(8, 1.0);
 
     let rfm_cfg = RfmMinibatchOtConfig {
-        reg: 0.2,
+        reg: 1.0,
         max_iter: 1000,
         tol: 2e-3,
         pairing: RfmMinibatchPairing::RowwiseNearest,

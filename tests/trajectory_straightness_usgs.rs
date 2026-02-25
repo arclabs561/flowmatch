@@ -111,7 +111,7 @@ fn rfm_usgs_few_step_behavior_beats_random_coupling() -> Result<()> {
 
     // RFM (paired).
     let rfm_cfg = RfmMinibatchOtConfig {
-        reg: 0.2,
+        reg: 1.0,
         max_iter: 800,
         tol: 2e-3,
         pairing: RfmMinibatchPairing::SinkhornGreedy,
