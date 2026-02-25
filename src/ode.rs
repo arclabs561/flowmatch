@@ -187,4 +187,98 @@ mod tests {
             prop_assert!(err_h1 <= err_e1 + 1e-6, "expected Heun <= Euler at steps={steps}");
         }
     }
+
+    #[test]
+    fn euler_on_exponential_decay_converges_to_exact() {
+        // ODE: dx/dt = -x, x(0) = 1. Exact: x(1) = e^{-1} ~ 0.3679.
+        // With 1000 steps, Euler should be within 1e-3 of exact.
+        let x0 = Array1::from_vec(vec![1.0f32]);
+        let exact = (-1.0f32).exp();
+        let steps = 1000usize;
+        let dt = 1.0f32 / (steps as f32);
+
+        let result = integrate_fixed(OdeMethod::Euler, &x0, 0.0, dt, steps, |x, _t| {
+            Array1::from_vec(vec![-x[0]])
+        });
+
+        let err = (result[0] - exact).abs();
+        assert!(
+            err < 1e-3,
+            "Euler with 1000 steps should be within 1e-3 of exact: got {}, exact {}, err {}",
+            result[0],
+            exact,
+            err
+        );
+    }
+
+    #[test]
+    fn heun_on_exponential_decay_is_very_accurate() {
+        // Heun is 2nd order, so with 100 steps on dx/dt=-x it should be extremely accurate.
+        let x0 = Array1::from_vec(vec![1.0f32]);
+        let exact = (-1.0f32).exp();
+        let steps = 100usize;
+        let dt = 1.0f32 / (steps as f32);
+
+        let result = integrate_fixed(OdeMethod::Heun, &x0, 0.0, dt, steps, |x, _t| {
+            Array1::from_vec(vec![-x[0]])
+        });
+
+        let err = (result[0] - exact).abs();
+        assert!(
+            err < 1e-5,
+            "Heun with 100 steps should be within 1e-5 of exact: got {}, exact {}, err {}",
+            result[0],
+            exact,
+            err
+        );
+    }
+
+    #[test]
+    fn euler_and_heun_on_2d_rotation_preserve_radius() {
+        // ODE: dx/dt = -y, dy/dt = x. Exact solution traces a circle of radius |x0|.
+        // Euler spirals outward; Heun should preserve radius much better.
+        let x0 = Array1::from_vec(vec![1.0f32, 0.0]);
+        let r0 = 1.0f32;
+        let steps = 200usize;
+        let total_t = std::f32::consts::PI; // half rotation
+        let dt = total_t / (steps as f32);
+
+        let euler = integrate_fixed(OdeMethod::Euler, &x0, 0.0, dt, steps, |x, _t| {
+            Array1::from_vec(vec![-x[1], x[0]])
+        });
+        let heun = integrate_fixed(OdeMethod::Heun, &x0, 0.0, dt, steps, |x, _t| {
+            Array1::from_vec(vec![-x[1], x[0]])
+        });
+
+        let r_euler = (euler[0] * euler[0] + euler[1] * euler[1]).sqrt();
+        let r_heun = (heun[0] * heun[0] + heun[1] * heun[1]).sqrt();
+
+        let err_euler = (r_euler - r0).abs();
+        let err_heun = (r_heun - r0).abs();
+
+        // Heun preserves radius much better than Euler on this rotation.
+        assert!(
+            err_heun < err_euler,
+            "Heun should preserve radius better: err_heun={err_heun} err_euler={err_euler}"
+        );
+        // Heun error should be small in absolute terms.
+        assert!(
+            err_heun < 0.01,
+            "Heun radius error should be < 0.01, got {err_heun}"
+        );
+    }
+
+    #[test]
+    fn single_step_euler_matches_manual() {
+        // One Euler step: x1 = x0 + dt * f(x0, t0).
+        let x0 = Array1::from_vec(vec![2.0f32, 3.0]);
+        let dt = 0.1f32;
+        let result = integrate_fixed(OdeMethod::Euler, &x0, 0.0, dt, 1, |x, _t| {
+            // f(x) = [x[1], -x[0]]
+            Array1::from_vec(vec![x[1], -x[0]])
+        });
+        // x1 = [2.0 + 0.1*3.0, 3.0 + 0.1*(-2.0)] = [2.3, 2.8]
+        assert!((result[0] - 2.3).abs() < 1e-6);
+        assert!((result[1] - 2.8).abs() < 1e-6);
+    }
 }

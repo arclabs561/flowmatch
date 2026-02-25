@@ -52,6 +52,7 @@ cargo run --release --example rfm_usgs_earthquakes_sphere
 | `rfm_torsions_nfe_curve` | Sample quality vs. ODE steps (torsion data) |
 | `rfm_usgs_nfe_curve` | Sample quality vs. ODE steps (earthquake data) |
 | `rfm_usgs_solver_nfe_tradeoff` | Euler vs. Heun under equal compute budgets |
+| `ode_comparison` | Euler vs Heun on a 2D circular ODE -- shows Heun's superior radius preservation |
 | `rfm_poincare_geodesic_ode` | Riemannian ODE on Poincare ball (`--features riemannian`) |
 | `profile_breakdown_*` | Where training time goes (Sinkhorn vs SGD) |
 
@@ -66,7 +67,7 @@ Tier-evals examples (require `--features tier-evals`):
 ## Tests
 
 ```bash
-cargo test -p flowmatch                  # 65 tests
+cargo test -p flowmatch                  # 77 tests
 cargo test -p flowmatch --features burn  # + burn backend tests
 ```
 

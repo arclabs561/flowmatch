@@ -110,4 +110,101 @@ mod tests {
         validate_simplex(&p, 1e-5).unwrap();
         assert!(p.iter().all(|&x| x >= 0.0));
     }
+
+    #[test]
+    fn validate_simplex_accepts_valid_point() {
+        let p = vec![0.2f32, 0.3, 0.5];
+        validate_simplex(&p, 1e-6).unwrap();
+    }
+
+    #[test]
+    fn validate_simplex_rejects_wrong_sum() {
+        let p = vec![0.2f32, 0.3, 0.4]; // sums to 0.9
+        assert!(validate_simplex(&p, 1e-6).is_err());
+    }
+
+    #[test]
+    fn validate_simplex_rejects_negative() {
+        let p = vec![-0.1f32, 0.6, 0.5];
+        assert!(validate_simplex(&p, 1e-6).is_err());
+    }
+
+    #[test]
+    fn validate_simplex_rejects_empty() {
+        let p: Vec<f32> = vec![];
+        assert!(validate_simplex(&p, 1e-6).is_err());
+    }
+
+    #[test]
+    fn normalize_simplex_produces_valid_simplex() {
+        let p = vec![1.0f32, 2.0, 3.0, 4.0];
+        let n = normalize_simplex(&p).unwrap();
+        validate_simplex(&n, 1e-6).unwrap();
+        // Check proportions are preserved.
+        assert!((n[0] / n[1] - 0.5).abs() < 1e-6);
+        assert!((n[2] / n[3] - 0.75).abs() < 1e-6);
+    }
+
+    #[test]
+    fn normalize_simplex_rejects_negative() {
+        let p = vec![1.0f32, -1.0, 2.0];
+        assert!(normalize_simplex(&p).is_err());
+    }
+
+    #[test]
+    fn normalize_simplex_rejects_all_zeros() {
+        let p = vec![0.0f32, 0.0, 0.0];
+        assert!(normalize_simplex(&p).is_err());
+    }
+
+    #[test]
+    fn simplex_lerp_at_boundaries() {
+        let p0 = vec![1.0f32, 0.0, 0.0];
+        let p1 = vec![0.0f32, 0.0, 1.0];
+
+        // t=0 -> p0
+        let at0 = simplex_lerp(&p0, &p1, 0.0).unwrap();
+        for (a, b) in at0.iter().zip(p0.iter()) {
+            assert!((a - b).abs() < 1e-7);
+        }
+
+        // t=1 -> p1
+        let at1 = simplex_lerp(&p0, &p1, 1.0).unwrap();
+        for (a, b) in at1.iter().zip(p1.iter()) {
+            assert!((a - b).abs() < 1e-7);
+        }
+
+        // t=0.5 -> midpoint
+        let mid = simplex_lerp(&p0, &p1, 0.5).unwrap();
+        assert!((mid[0] - 0.5).abs() < 1e-7);
+        assert!((mid[1] - 0.0).abs() < 1e-7);
+        assert!((mid[2] - 0.5).abs() < 1e-7);
+    }
+
+    #[test]
+    fn simplex_lerp_stays_on_simplex() {
+        // If p0 and p1 are on the simplex, p(t) is on the simplex for t in [0,1].
+        let p0 = vec![0.3f32, 0.5, 0.2];
+        let p1 = vec![0.1f32, 0.1, 0.8];
+        for i in 0..=10 {
+            let t = i as f32 / 10.0;
+            let pt = simplex_lerp(&p0, &p1, t).unwrap();
+            validate_simplex(&pt, 1e-5).unwrap();
+        }
+    }
+
+    #[test]
+    fn simplex_lerp_rejects_mismatched_lengths() {
+        let p0 = vec![0.5f32, 0.5];
+        let p1 = vec![0.3f32, 0.3, 0.4];
+        assert!(simplex_lerp(&p0, &p1, 0.5).is_err());
+    }
+
+    #[test]
+    fn simplex_lerp_rejects_out_of_range_t() {
+        let p0 = vec![0.5f32, 0.5];
+        let p1 = vec![0.3f32, 0.7];
+        assert!(simplex_lerp(&p0, &p1, -0.1).is_err());
+        assert!(simplex_lerp(&p0, &p1, 1.1).is_err());
+    }
 }

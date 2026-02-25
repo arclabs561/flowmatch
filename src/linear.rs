@@ -125,3 +125,77 @@ impl LinearCondField {
         (s / (n as f64 * d as f64)) as f32
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn zero_field_evals_to_zero() {
+        let f = LinearCondField::new_zeros(3);
+        let x = Array1::from_vec(vec![1.0f32, 2.0, 3.0]);
+        let y = Array1::from_vec(vec![4.0f32, 5.0, 6.0]);
+        let out = f.eval(&x.view(), 0.5, &y.view());
+        for i in 0..3 {
+            assert_eq!(out[i], 0.0, "zero field must produce zero output at dim {i}");
+        }
+    }
+
+    #[test]
+    fn eval_matches_manual_1d() {
+        // d=1 => W is (1, 4): [w_x, w_y, w_t, w_bias]
+        let mut f = LinearCondField::new_zeros(1);
+        f.w[[0, 0]] = 2.0; // w_x
+        f.w[[0, 1]] = 3.0; // w_y
+        f.w[[0, 2]] = 4.0; // w_t
+        f.w[[0, 3]] = 5.0; // w_bias
+
+        let x = Array1::from_vec(vec![1.0f32]);
+        let y = Array1::from_vec(vec![2.0f32]);
+        let t = 0.5f32;
+
+        let out = f.eval(&x.view(), t, &y.view());
+        // out = 2*1 + 3*2 + 4*0.5 + 5*1 = 2 + 6 + 2 + 5 = 15
+        assert!((out[0] - 15.0).abs() < 1e-6, "got {}", out[0]);
+    }
+
+    #[test]
+    fn sgd_step_reduces_loss_on_constant_target() {
+        // Train on a single example repeatedly; loss should decrease.
+        let mut f = LinearCondField::new_zeros(2);
+        let x = Array1::from_vec(vec![1.0f32, 0.0]);
+        let y = Array1::from_vec(vec![0.0f32, 1.0]);
+        let u = Array1::from_vec(vec![3.0f32, -2.0]); // target velocity
+        let t = 0.5f32;
+        let lr = 0.01f32;
+
+        let pred_before = f.eval(&x.view(), t, &y.view());
+        let loss_before: f32 = pred_before.iter().zip(u.iter()).map(|(p, t)| (p - t).powi(2)).sum();
+
+        for _ in 0..100 {
+            f.sgd_step(&x.view(), t, &y.view(), &u.view(), lr);
+        }
+
+        let pred_after = f.eval(&x.view(), t, &y.view());
+        let loss_after: f32 = pred_after.iter().zip(u.iter()).map(|(p, t)| (p - t).powi(2)).sum();
+
+        assert!(
+            loss_after < loss_before * 0.01,
+            "SGD should reduce loss substantially: before={loss_before} after={loss_after}"
+        );
+    }
+
+    #[test]
+    fn mse_batch_zero_field_equals_target_norm() {
+        // Zero field => pred = 0, so MSE = mean(||u||^2 / d).
+        let f = LinearCondField::new_zeros(2);
+        let xs = Array2::from_shape_vec((2, 2), vec![1.0, 0.0, 0.0, 1.0]).unwrap();
+        let ys = Array2::from_shape_vec((2, 2), vec![0.0, 1.0, 1.0, 0.0]).unwrap();
+        let us = Array2::from_shape_vec((2, 2), vec![3.0, 4.0, 1.0, 2.0]).unwrap();
+        let ts = vec![0.3f32, 0.7];
+
+        let mse = f.mse_batch(&xs.view(), &ts, &ys.view(), &us.view());
+        // Expected: ( (9+16) + (1+4) ) / (2*2) = 30/4 = 7.5
+        assert!((mse - 7.5).abs() < 1e-5, "expected 7.5, got {mse}");
+    }
+}

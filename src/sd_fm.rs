@@ -1130,4 +1130,116 @@ mod tests {
             "expected UShaped to concentrate near boundaries: fu={fu:.3} f0={f0:.3}"
         );
     }
+
+    #[test]
+    fn training_reduces_mse_vs_untrained() {
+        // A trained SD-FM model should have lower MSE on in-distribution samples
+        // than a zero-initialized (untrained) field.
+        use crate::linear::LinearCondField;
+        use wass::semidiscrete::SemidiscreteSgdConfig;
+
+        let n = 4;
+        let d = 2;
+        // Simple target: 4 corners of a square.
+        let y = Array2::from_shape_vec(
+            (n, d),
+            vec![1.0, 1.0, 1.0, -1.0, -1.0, 1.0, -1.0, -1.0],
+        )
+        .unwrap();
+        let b = Array1::from_elem(n, 0.25f32);
+
+        let pot_cfg = SemidiscreteSgdConfig {
+            epsilon: 0.0,
+            lr: 0.01,
+            steps: 200,
+            batch_size: 64,
+            seed: 7,
+        };
+        let fm_cfg = SdFmTrainConfig {
+            lr: 5e-3,
+            steps: 500,
+            batch_size: 64,
+            sample_steps: 20,
+            seed: 42,
+            t_schedule: TimestepSchedule::Uniform,
+        };
+
+        let trained = train_sd_fm_semidiscrete_linear(&y.view(), &b.view(), &pot_cfg, &fm_cfg)
+            .expect("training should succeed");
+
+        let untrained = LinearCondField::new_zeros(d);
+
+        // Evaluate MSE on a small test batch using the linear-path ground truth.
+        let mut rng = ChaCha8Rng::seed_from_u64(999);
+        let test_n = 200;
+        let mut xs = Array2::<f32>::zeros((test_n, d));
+        let mut ys_batch = Array2::<f32>::zeros((test_n, d));
+        let mut us = Array2::<f32>::zeros((test_n, d));
+        let mut ts = vec![0.0f32; test_n];
+
+        for i in 0..test_n {
+            let mut x0 = Array1::<f32>::zeros(d);
+            for k in 0..d {
+                x0[k] = StandardNormal.sample(&mut rng);
+            }
+            let j = i % n;
+            let t: f32 = rng.random();
+            ts[i] = t;
+            for k in 0..d {
+                xs[[i, k]] = (1.0 - t) * x0[k] + t * y[[j, k]];
+                ys_batch[[i, k]] = y[[j, k]];
+                us[[i, k]] = y[[j, k]] - x0[k];
+            }
+        }
+
+        let mse_trained =
+            trained
+                .field
+                .mse_batch(&xs.view(), &ts, &ys_batch.view(), &us.view());
+        let mse_untrained = untrained.mse_batch(&xs.view(), &ts, &ys_batch.view(), &us.view());
+
+        assert!(
+            mse_trained < mse_untrained,
+            "trained MSE ({mse_trained}) should be less than untrained ({mse_untrained})"
+        );
+    }
+
+    #[test]
+    fn trained_model_samples_are_finite() {
+        // Basic smoke test: sampling from a trained model should produce finite values.
+        use wass::semidiscrete::SemidiscreteSgdConfig;
+
+        let n = 3;
+        let d = 2;
+        let y = Array2::from_shape_vec((n, d), vec![1.0, 0.0, 0.0, 1.0, -1.0, -1.0]).unwrap();
+        let b = Array1::from_elem(n, 1.0 / n as f32);
+
+        let pot_cfg = SemidiscreteSgdConfig {
+            epsilon: 0.0,
+            lr: 0.01,
+            steps: 100,
+            batch_size: 32,
+            seed: 1,
+        };
+        let fm_cfg = SdFmTrainConfig {
+            lr: 5e-3,
+            steps: 200,
+            batch_size: 32,
+            sample_steps: 20,
+            seed: 2,
+            t_schedule: TimestepSchedule::Uniform,
+        };
+
+        let model = train_sd_fm_semidiscrete_linear(&y.view(), &b.view(), &pot_cfg, &fm_cfg)
+            .expect("training should succeed");
+
+        let (samples, js) = model.sample(10, 777, 20).expect("sampling should succeed");
+        assert_eq!(samples.nrows(), 10);
+        assert_eq!(samples.ncols(), d);
+        assert!(
+            samples.iter().all(|&x| x.is_finite()),
+            "all samples must be finite"
+        );
+        assert!(js.iter().all(|&j| j < n), "all indices must be in range");
+    }
 }

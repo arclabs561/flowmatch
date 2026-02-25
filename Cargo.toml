@@ -50,6 +50,10 @@ petgraph = "0.6"
 hyperball = { path = "../hyperball" }
 
 [[example]]
+name = "ode_comparison"
+path = "examples/ode_comparison.rs"
+
+[[example]]
 name = "rfm_usgs_earthquakes_cluster_mass"
 path = "examples/rfm_usgs_earthquakes_cluster_mass.rs"
 required-features = ["tier-evals"]
