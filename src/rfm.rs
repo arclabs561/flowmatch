@@ -20,6 +20,7 @@ fn l2_squared(a: &ArrayView1<'_, f32>, b: &ArrayView1<'_, f32>) -> f32 {
     s
 }
 
+#[cfg(test)]
 #[inline]
 fn l2(a: &ArrayView1<'_, f32>, b: &ArrayView1<'_, f32>) -> f32 {
     l2_squared(a, b).sqrt()

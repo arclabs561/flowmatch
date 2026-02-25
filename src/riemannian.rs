@@ -63,9 +63,9 @@ where
             let t = cfg.t_schedule.sample_t(&mut rng);
             let x0_f32 = sample_x0(&mut rng);
 
-            // Pick random target x1
-            let idx = (rng.random::<f32>() * n_data as f32) as usize;
-            let idx = idx.min(n_data - 1);
+            // Pick random target x1 (use gen_range for uniform integer sampling
+            // without f32 precision limits).
+            let idx = rng.random_range(0..n_data);
             let x1_f32 = x1_samples.row(idx);
 
             // Convert to f64 for manifold ops (skel uses f64)
