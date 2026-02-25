@@ -433,21 +433,23 @@ pub fn minibatch_exp_greedy_pairing(
         return Err(Error::Domain("x/y contain NaN/Inf"));
     }
 
-    // Avoid materializing cost and weight matrices. We still build an n² edge list to sort.
+    // Sort in log-domain to avoid exp() underflow for large distances / small temperatures.
+    // Since exp is monotonic, sorting by -dist/temp (descending) gives the same order as
+    // sorting by exp(-dist/temp) (descending), but without the f32 underflow-to-zero problem.
     let d = x.ncols();
     let mut edges: Vec<(usize, usize, f32)> = Vec::with_capacity(n * n);
     for i in 0..n {
         let xi = x.row(i);
         for j in 0..n {
             let yj = y.row(j);
-            // Match Sinkhorn’s notion of cost here (Euclidean distance, not squared).
             let mut dist_sq = 0.0f32;
             for k in 0..d {
                 let dd = xi[k] - yj[k];
                 dist_sq += dd * dd;
             }
             let dist = dist_sq.sqrt();
-            edges.push((i, j, (-dist / temp).exp()));
+            // Store log-weight = -dist/temp instead of exp(-dist/temp).
+            edges.push((i, j, -dist / temp));
         }
     }
     edges.sort_by(|a, b| b.2.total_cmp(&a.2));
@@ -717,6 +719,36 @@ mod tests {
             prop_assert!(is_permutation(&perm_fast));
             prop_assert_eq!(perm_fast, perm_def);
         }
+    }
+
+    // Exp-greedy must produce a valid non-trivial pairing even when exp(-dist/temp) would
+    // underflow to 0.0 in f32. This tests the log-domain sort fix: small temp + large distances
+    // previously caused silent degradation to identity permutation.
+    #[test]
+    fn exp_greedy_works_with_extreme_underflow_regime() {
+        // Points far apart in high dimension: typical distance >> temp.
+        let n = 8usize;
+        let d = 64usize;
+        let mut x = Array2::<f32>::zeros((n, d));
+        let mut y = Array2::<f32>::zeros((n, d));
+        // x[i] = (i, i, i, ...), y[j] = (n-1-j, n-1-j, ...) scaled to large distance.
+        for i in 0..n {
+            for k in 0..d {
+                x[[i, k]] = (i as f32) * 10.0;
+                y[[i, k]] = ((n - 1 - i) as f32) * 10.0;
+            }
+        }
+
+        let temp = 0.01; // Very small: exp(-dist/temp) underflows for all pairs.
+        let perm = minibatch_exp_greedy_pairing(&x.view(), &y.view(), temp).unwrap();
+        assert!(is_permutation(&perm));
+
+        // With these points, x[0] is closest to y[n-1], x[1] to y[n-2], etc.
+        // The greedy matching should recover (approximately) the reverse permutation,
+        // NOT the identity permutation that all-zero weights would produce.
+        // Check that it's not identity (the failure mode of the old code).
+        let identity: Vec<usize> = (0..n).collect();
+        assert_ne!(perm, identity, "exp-greedy collapsed to identity (underflow)");
     }
 
     proptest! {
