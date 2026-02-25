@@ -34,7 +34,7 @@ rand = "0.9"
 rand_chacha = "0.9"
 rand_distr = "0.5"
 logp = "0.1.0"
-wass = { git = "https://github.com/arclabs561/wass", tag = "v0.1.0" }
+wass = { path = "../wass" }
 skel = { path = "../skel" }
 tier = { version = "0.1.0", default-features = false, features = ["cluster", "community", "knn-graph", "metrics", "wass"], optional = true }
 burn-core = { version = "0.20.0", default-features = false, features = ["std"], optional = true }

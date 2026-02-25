@@ -722,8 +722,46 @@ mod tests {
         }
     }
 
-    // Another seam where it’s easy to lie: "squared vs sqrt doesn't matter".
-    // It *doesn't* matter for argmin, but it *does* matter for exp(-cost / temp) weights.
+    // Cross-check: our internal `sq_euclidean_cost_matrix_from_views` must agree entry-by-entry
+    // with the `wass::sq_euclidean_cost_matrix` public function — a "reuse seam" property test.
+    proptest! {
+        #[test]
+        fn prop_sq_cost_matrix_matches_wass_sq_cost(
+            n in 1usize..8,
+            d in 1usize..8,
+            seed in any::<u64>(),
+        ) {
+            use rand::SeedableRng;
+            use rand_chacha::ChaCha8Rng;
+            use rand_distr::{Distribution, StandardNormal};
+
+            let mut rng = ChaCha8Rng::seed_from_u64(seed);
+            let mut x = Array2::<f32>::zeros((n, d));
+            let mut y = Array2::<f32>::zeros((n, d));
+            for i in 0..n {
+                for k in 0..d {
+                    x[[i, k]] = StandardNormal.sample(&mut rng);
+                    y[[i, k]] = StandardNormal.sample(&mut rng);
+                }
+            }
+
+            let cost_wass_sq = wass::sq_euclidean_cost_matrix(&x, &y);
+            let cost_ours_sq = sq_euclidean_cost_matrix_from_views(&x.view(), &y.view()).unwrap();
+
+            prop_assert_eq!(cost_wass_sq.shape(), cost_ours_sq.shape());
+            for i in 0..n {
+                for j in 0..n {
+                    let w = cost_wass_sq[[i, j]];
+                    let o = cost_ours_sq[[i, j]];
+                    prop_assert!((w - o).abs() <= 1e-5,
+                        "mismatch at ({i},{j}): wass_sq={w} ours={o}");
+                }
+            }
+        }
+    }
+
+    // Another seam where it’s easy to lie: "squared vs sqrt doesn’t matter".
+    // It *doesn’t* matter for argmin, but it *does* matter for exp(-cost / temp) weights.
     proptest! {
         #[test]
         fn prop_argmin_same_for_sq_vs_sqrt(
