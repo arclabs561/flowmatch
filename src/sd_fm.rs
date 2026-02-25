@@ -535,6 +535,8 @@ pub fn train_rfm_minibatch_ot_linear(
         }
 
         // 4) FM regression updates along straight line between paired points.
+        debug_assert!(perm.len() >= bs, "perm shorter than batch_size");
+        debug_assert!(perm.iter().take(bs).all(|&p| p < bs), "perm index out of range");
         for (i, &p) in perm.iter().enumerate().take(bs) {
             let x0 = x0s.row(i);
             let y1 = ys.row(p);
