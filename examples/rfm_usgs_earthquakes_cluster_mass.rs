@@ -22,8 +22,8 @@ use ndarray::{Array1, Array2};
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use rand_distr::{Distribution, StandardNormal};
-use tier::cluster::{Clustering, Kmeans};
-use tier::distribution_distance::{DistributionDistance, DistributionDistanceConfig};
+use parti::cluster::{Clustering, Kmeans};
+use parti::distribution_distance::{DistributionDistance, DistributionDistanceConfig};
 
 const USGS_CSV: &str = include_str!("../examples_data/usgs_eq_m6_2024_limit50.csv.txt");
 

@@ -29,10 +29,10 @@ use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use rand_distr::{Distribution, StandardNormal};
 use std::time::{Duration, Instant};
-use tier::cluster::{Clustering, Kmeans};
-use tier::community::CommunityDetection;
-use tier::distribution_distance::{DistributionDistance, DistributionDistanceConfig};
-use tier::{knn_graph_with_config, KnnGraphConfig, Leiden, WeightFunction};
+use parti::cluster::{Clustering, Kmeans};
+use parti::community::CommunityDetection;
+use parti::distribution_distance::{DistributionDistance, DistributionDistanceConfig};
+use parti::{knn_graph_with_config, KnnGraphConfig, Leiden, WeightFunction};
 
 const USGS_CSV: &str = include_str!("../examples_data/usgs_eq_m6_2024_limit50.csv.txt");
 

@@ -91,7 +91,7 @@ cargo run --release --example rfm_poincare_geodesic_ode --features riemannian
 | `discrete_ctmc_path_evolution` | CTMC path evolution with time-dependent generators |
 | `profile_breakdown_*` | Where training time goes (Sinkhorn vs SGD) |
 
-Requires `--features tier-evals`:
+Requires `--features parti-evals`:
 
 | Example | What it shows |
 |---|---|

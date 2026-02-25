@@ -24,8 +24,8 @@ use ndarray::{Array1, Array2};
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use rand_distr::{Distribution, StandardNormal};
-use tier::community::CommunityDetection;
-use tier::{knn_graph_with_config, KnnGraphConfig, Leiden, WeightFunction};
+use parti::community::CommunityDetection;
+use parti::{knn_graph_with_config, KnnGraphConfig, Leiden, WeightFunction};
 
 const USGS_CSV: &str = include_str!("../examples_data/usgs_eq_m6_2024_limit50.csv.txt");
 
