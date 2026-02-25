@@ -43,6 +43,8 @@ where
                 let v = f(&x.view(), t);
                 let step = v.mapv(|u| u * dt);
                 x = manifold.exp_map(&x.view(), &step.view());
+                // Project back onto manifold to correct numerical drift.
+                x = manifold.project(&x.view());
                 t += dt;
             }
         }
@@ -53,6 +55,7 @@ where
                 // predictor (Euler)
                 let step0 = v0.mapv(|u| u * dt);
                 let x_pred = manifold.exp_map(&x.view(), &step0.view());
+                let x_pred = manifold.project(&x_pred.view());
 
                 // corrector velocity lives in T_{x_pred} M
                 let v1 = f(&x_pred.view(), t + dt);
@@ -63,6 +66,8 @@ where
                 let v_avg = (&v0 + &v1_at_x).mapv(|u| 0.5 * u);
                 let step = v_avg.mapv(|u| u * dt);
                 x = manifold.exp_map(&x.view(), &step.view());
+                // Project back onto manifold to correct numerical drift.
+                x = manifold.project(&x.view());
 
                 t += dt;
             }

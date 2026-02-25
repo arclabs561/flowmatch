@@ -13,7 +13,8 @@
 use crate::linear::LinearCondField;
 use crate::ode::{integrate_fixed, OdeMethod};
 use crate::rfm::{
-    minibatch_exp_greedy_pairing, minibatch_ot_greedy_pairing, minibatch_ot_selective_pairing,
+    minibatch_exp_greedy_pairing, minibatch_ot_greedy_pairing,
+    minibatch_ot_greedy_pairing_normalized, minibatch_ot_selective_pairing,
     minibatch_partial_rowwise_pairing, minibatch_rowwise_nearest_pairing,
 };
 use crate::{Error, Result};
@@ -43,8 +44,15 @@ fn sample_categorical_from_probs(probs: &ArrayView1<f32>, rng: &mut impl rand::R
 
 /// How we sample the FM time variable `t ∈ [0,1]` during training.
 ///
-/// Paper nuance: non-uniform (U-shaped) time sampling can materially affect few-step quality,
+/// Paper nuance: non-uniform time sampling can materially affect few-step quality,
 /// because numerical error concentrates near the boundaries. We keep this explicit and testable.
+///
+/// Literature reference:
+/// - **Uniform**: standard choice (Lipman et al. 2022, Tong et al. 2023)
+/// - **UShaped**: more mass near `t=0` and `t=1`, good for boundary-sensitive tasks
+/// - **LogitNormal**: `t = sigmoid(N(mean, std))`, used in Stable Diffusion 3 (Esser et al. 2024)
+///   and recommended in the FM Guide (Lipman et al. 2024). Concentrates mass near `t=0.5` by default,
+///   but `mean`/`std` parameters can shift and widen the distribution.
 #[derive(Debug, Clone, Copy, Default)]
 pub enum TimestepSchedule {
     /// Uniform `t ~ U[0,1]`.
@@ -54,17 +62,33 @@ pub enum TimestepSchedule {
     ///
     /// Implemented as `t = sin^2((π/2) * u)` for `u ~ U[0,1]`, which is Beta(1/2, 1/2).
     UShaped,
+    /// Logit-normal distribution: `t = sigmoid(mean + std * z)` where `z ~ N(0,1)`.
+    ///
+    /// - `mean=0, std=1` concentrates around `t=0.5` (default in SD3)
+    /// - `mean>0` shifts mass toward `t=1`
+    /// - larger `std` spreads mass toward the boundaries
+    ///
+    /// The output is clamped to `[eps, 1-eps]` to avoid exact 0 or 1.
+    LogitNormal { mean: f32, std: f32 },
 }
 
 impl TimestepSchedule {
     #[inline]
     pub fn sample_t(self, rng: &mut impl rand::Rng) -> f32 {
-        let u: f32 = rng.random();
         match self {
-            TimestepSchedule::Uniform => u,
+            TimestepSchedule::Uniform => rng.random(),
             TimestepSchedule::UShaped => {
+                let u: f32 = rng.random();
                 let s = (0.5 * core::f32::consts::PI * u).sin();
                 s * s
+            }
+            TimestepSchedule::LogitNormal { mean, std } => {
+                let z: f32 = StandardNormal.sample(rng);
+                let u = mean + std * z;
+                // sigmoid(u) = 1 / (1 + exp(-u))
+                let t = 1.0 / (1.0 + (-u).exp());
+                // Clamp away from exact 0/1 to avoid singularities.
+                t.clamp(1e-5, 1.0 - 1e-5)
             }
         }
     }
@@ -107,6 +131,10 @@ impl Default for SdFmTrainConfig {
 pub enum RfmMinibatchPairing {
     /// Current default: Sinkhorn OT plan + greedy matching.
     SinkhornGreedy,
+    /// Like `SinkhornGreedy` but normalizes the cost matrix by its maximum value before
+    /// running Sinkhorn. This stabilizes convergence when cost magnitudes vary widely across
+    /// batches (recommended by torchcfm for heterogeneous data).
+    SinkhornGreedyNormalized,
     /// Partial Sinkhorn pairing: compute a Sinkhorn plan, then only enforce one-to-one matching
     /// for the most confident fraction of rows. Remaining rows fall back to per-row argmax in
     /// the Sinkhorn plan (duplicates allowed).
@@ -424,7 +452,7 @@ pub fn train_rfm_minibatch_ot_linear(
         return Err(Error::Domain("rfm_cfg.pairing_every must be >= 1"));
     }
     match rfm_cfg.pairing {
-        RfmMinibatchPairing::SinkhornGreedy => {
+        RfmMinibatchPairing::SinkhornGreedy | RfmMinibatchPairing::SinkhornGreedyNormalized => {
             if !rfm_cfg.reg.is_finite() || rfm_cfg.reg <= 0.0 {
                 return Err(Error::Domain("rfm_cfg.reg must be positive and finite"));
             }
@@ -512,6 +540,15 @@ pub fn train_rfm_minibatch_ot_linear(
                     rfm_cfg.max_iter,
                     rfm_cfg.tol,
                 )?,
+                RfmMinibatchPairing::SinkhornGreedyNormalized => {
+                    minibatch_ot_greedy_pairing_normalized(
+                        &x0s.view(),
+                        &ys.view(),
+                        rfm_cfg.reg,
+                        rfm_cfg.max_iter,
+                        rfm_cfg.tol,
+                    )?
+                }
                 RfmMinibatchPairing::SinkhornSelective { keep_frac } => {
                     minibatch_ot_selective_pairing(
                         &x0s.view(),
@@ -987,6 +1024,77 @@ mod tests {
                 if t % pairing_every != 0 {
                     prop_assert_eq!(sigs[t], sigs[t - 1], "expected batch reuse at t={} pairing_every={}", t, pairing_every);
                 }
+            }
+        }
+    }
+
+    #[test]
+    fn logit_normal_concentrates_near_half() {
+        // Logit-normal with mean=0, std=1 should have more mass near t=0.5 than uniform.
+        let mut rng = ChaCha8Rng::seed_from_u64(42);
+        let n = 50_000usize;
+        let eps = 0.1f32;
+
+        let mut near_half_ln = 0usize;
+        let mut near_half_uni = 0usize;
+
+        for _ in 0..n {
+            let tln = TimestepSchedule::LogitNormal {
+                mean: 0.0,
+                std: 1.0,
+            }
+            .sample_t(&mut rng);
+            let tuni = TimestepSchedule::Uniform.sample_t(&mut rng);
+            if (tln - 0.5).abs() <= eps {
+                near_half_ln += 1;
+            }
+            if (tuni - 0.5).abs() <= eps {
+                near_half_uni += 1;
+            }
+        }
+
+        let fln = near_half_ln as f32 / n as f32;
+        let funi = near_half_uni as f32 / n as f32;
+
+        assert!(
+            fln > funi + 0.05,
+            "expected LogitNormal(0,1) to concentrate near 0.5: fln={fln:.3} funi={funi:.3}"
+        );
+    }
+
+    #[test]
+    fn logit_normal_shifted_mean_pushes_mass_right() {
+        // With positive mean, samples should be biased toward t=1.
+        let mut rng = ChaCha8Rng::seed_from_u64(99);
+        let n = 50_000usize;
+        let mut sum = 0.0f64;
+
+        for _ in 0..n {
+            let t = TimestepSchedule::LogitNormal {
+                mean: 1.0,
+                std: 1.0,
+            }
+            .sample_t(&mut rng);
+            sum += t as f64;
+        }
+        let mean_t = sum / n as f64;
+        assert!(
+            mean_t > 0.55,
+            "expected mean > 0.55 with positive mean shift, got {mean_t:.3}"
+        );
+    }
+
+    proptest! {
+        #[test]
+        fn prop_logit_normal_always_in_unit_interval(
+            mean in -3.0f32..3.0f32,
+            std in 0.1f32..5.0f32,
+            seed in any::<u64>(),
+        ) {
+            let mut rng = ChaCha8Rng::seed_from_u64(seed);
+            for _ in 0..100 {
+                let t = TimestepSchedule::LogitNormal { mean, std }.sample_t(&mut rng);
+                prop_assert!(t > 0.0 && t < 1.0, "t={t} out of (0,1) with mean={mean} std={std}");
             }
         }
     }
