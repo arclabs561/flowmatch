@@ -410,8 +410,8 @@ pub fn train_rfm_minibatch_ot_linear(
     if b.iter().any(|&x| x < 0.0) {
         return Err(Error::Domain("b must be nonnegative"));
     }
-    let bs = b.sum();
-    if bs <= 0.0 {
+    let b_total = b.sum();
+    if b_total <= 0.0 {
         return Err(Error::Domain("b must have positive total mass"));
     }
     if !fm_cfg.lr.is_finite() || fm_cfg.lr <= 0.0 {
@@ -466,7 +466,7 @@ pub fn train_rfm_minibatch_ot_linear(
         }
     }
 
-    let b_norm = b.to_owned() / bs;
+    let b_norm = b.to_owned() / b_total;
 
     // No semidiscrete potentials in this baseline.
     let g = Array1::<f32>::zeros(n);
@@ -610,11 +610,11 @@ mod tests {
         if b.len() != n {
             return Err(Error::Shape("b length must match y.nrows()"));
         }
-        let bs = b.sum();
-        if bs <= 0.0 {
+        let b_total = b.sum();
+        if b_total <= 0.0 {
             return Err(Error::Domain("b must have positive total mass"));
         }
-        let b_norm = b.to_owned() / bs;
+        let b_norm = b.to_owned() / b_total;
 
         let bs = fm_cfg.batch_size;
         let mut rng = ChaCha8Rng::seed_from_u64(fm_cfg.seed);
