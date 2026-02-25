@@ -21,7 +21,7 @@ Flow matching in Rust. Train generative models that learn to transport noise to 
 - [`wass`](https://github.com/arclabs561/wass) -- optimal transport (Sinkhorn, coupling)
 - [`skel`](https://github.com/arclabs561/skel) -- manifold trait (exp/log/transport)
 - [`logp`](https://github.com/arclabs561/logp) -- information theory (JS divergence)
-- [`hyperball`](https://github.com/arclabs561/hyp) -- hyperbolic geometry (dev-dependency for Riemannian tests)
+- [`hyperball`](https://github.com/arclabs561/hyperball) -- hyperbolic geometry (dev-dependency for Riemannian tests)
 
 ## Quick start
 
