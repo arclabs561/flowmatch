@@ -91,7 +91,7 @@ fn sample_categorical_from_probs(probs: &ArrayView1<f32>, rng: &mut impl rand::R
     let mut acc = 0.0f32;
     for idx in 0..probs.len() {
         acc += probs[idx];
-        if u <= acc {
+        if u < acc {
             return idx;
         }
     }

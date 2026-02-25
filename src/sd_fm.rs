@@ -34,7 +34,7 @@ fn sample_categorical_from_probs(probs: &ArrayView1<f32>, rng: &mut impl rand::R
     let mut acc = 0.0f32;
     for idx in 0..probs.len() {
         acc += probs[idx];
-        if u <= acc {
+        if u < acc {
             return idx;
         }
     }
@@ -683,6 +683,59 @@ mod tests {
                 prop_assert!(b < n);
                 prop_assert_eq!(a, b);
             }
+        }
+    }
+
+    // Zero-probability categories must never be sampled, even when u == 0.0.
+    // This directly tests the `u < acc` (not `u <= acc`) invariant.
+    proptest! {
+        #[test]
+        fn prop_sample_categorical_never_selects_zero_prob(
+            n in 2usize..64,
+            zero_prefix in 1usize..32,
+            seed in any::<u64>(),
+        ) {
+            use rand::SeedableRng;
+            use rand_chacha::ChaCha8Rng;
+
+            let zero_prefix = zero_prefix.min(n - 1);
+            let mut p = Array1::<f32>::zeros(n);
+            // First `zero_prefix` categories have probability 0.
+            for i in zero_prefix..n {
+                p[i] = 1.0 / ((i - zero_prefix + 1) as f32);
+            }
+            let s = p.sum();
+            p /= s;
+
+            let mut rng = ChaCha8Rng::seed_from_u64(seed);
+            for _ in 0..512 {
+                let idx = sample_categorical_from_probs(&p.view(), &mut rng);
+                prop_assert!(idx >= zero_prefix, "sampled zero-prob index {idx} (zero_prefix={zero_prefix})");
+            }
+        }
+    }
+
+    // Edge case: when u == 0.0 exactly, we must not select a zero-probability category.
+    #[test]
+    fn sample_categorical_u_zero_skips_zero_prob() {
+        // Build a distribution where p[0] == 0.0 and p[1] == 1.0.
+        let p = Array1::<f32>::from_vec(vec![0.0, 1.0]);
+
+        // Mock RNG that always returns 0.0 for f32.
+        struct ZeroRng;
+        impl rand::RngCore for ZeroRng {
+            fn next_u32(&mut self) -> u32 { 0 }
+            fn next_u64(&mut self) -> u64 { 0 }
+            fn fill_bytes(&mut self, dest: &mut [u8]) {
+                for b in dest.iter_mut() { *b = 0; }
+            }
+        }
+
+        let mut rng = ZeroRng;
+        // rng.random::<f32>() with all-zero bits -> 0.0
+        for _ in 0..100 {
+            let idx = sample_categorical_from_probs(&p.view(), &mut rng);
+            assert_eq!(idx, 1, "expected index 1 (p=1.0), got {idx} (p=0.0)");
         }
     }
 
