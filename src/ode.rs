@@ -6,6 +6,14 @@
 //! \]
 //!
 //! We keep this module tiny and deterministic: no adaptive stepping, no hidden tolerances.
+//!
+//! # Discretization error analysis
+//!
+//! Guan et al., "Total Variation Rates for Riemannian Flow Matching" (2026)
+//! provides the first nonasymptotic TV convergence analysis for Riemannian
+//! flow matching sampling. It quantifies how Euler discretization error
+//! propagates to sample quality, giving concrete bounds on the number of
+//! integration steps needed for a target TV tolerance.
 
 use ndarray::{Array1, ArrayView1};
 

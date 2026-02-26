@@ -1,8 +1,9 @@
 //! Discrete Flow Matching: probability path evolution under different schedules.
 //!
-//! Reproduces the core idea from Gat et al. (2024, NeurIPS): a CTMC drives
-//! a categorical distribution from a source state x_0 toward a target state x_1,
-//! with the transition rate controlled by an interpolation schedule kappa(t).
+//! Reproduces the core idea from Gat et al., "Discrete Flow Matching"
+//! (NeurIPS 2024): a CTMC drives a categorical distribution from a source
+//! state x_0 toward a target state x_1, with the transition rate controlled
+//! by an interpolation schedule kappa(t).
 //!
 //! This example shows:
 //! 1. How the conditional probability path p_t(x | x_0, x_1) evolves for each schedule.

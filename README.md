@@ -128,9 +128,11 @@ cargo test -p flowmatch --features burn  # + burn backend tests
 ## References
 
 1. Lipman et al., [Flow Matching for Generative Modeling](https://arxiv.org/abs/2210.02747) (2022)
-2. Lipman et al., [Flow Matching Guide and Code](https://arxiv.org/abs/2412.06264) (2024)
-3. Gat et al., [Discrete Flow Matching](https://proceedings.neurips.cc/paper_files/paper/2024/hash/8a2a3efb0b8e1b8cbd7c69bda6a4d2df-Abstract-Conference.html) (NeurIPS 2024)
-4. Chen & Lipman, [Riemannian Flow Matching](https://arxiv.org/abs/2302.03660) (2023)
+2. Lipman et al., [Flow Matching Guide and Code](https://arxiv.org/abs/2412.06264) (2024) -- comprehensive tutorial
+3. Gat et al., [Discrete Flow Matching](https://proceedings.neurips.cc/paper_files/paper/2024/hash/8a2a3efb0b8e1b8cbd7c69bda6a4d2df-Abstract-Conference.html) (NeurIPS 2024) -- CTMC-based discrete FM
+4. Chen & Lipman, [Riemannian Flow Matching on General Geometries](https://arxiv.org/abs/2302.03660) (2023)
+5. de Kruiff et al., [Pullback Flow Matching on Data Manifolds](https://arxiv.org/abs/2410.04543) (2024) -- FM on implicit manifolds without closed-form exp/log maps
+6. Sherry & Smets, [Flow Matching on Lie Groups](https://arxiv.org/abs/2505.08393) (2025) -- specialization to SO(3) and SE(3)
 
 ## License
 

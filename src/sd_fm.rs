@@ -9,6 +9,16 @@
 //! - deterministic with a seed,
 //! - measurable improvement on a small synthetic regime (via an e2e test),
 //! - no hidden assumptions.
+//!
+//! # Pairing Strategies and Related Work
+//!
+//! - Tong et al. (2023), “Conditional Flow Matching: Simulation-Free Dynamic OT”
+//!   -- OT-CFM: minibatch Sinkhorn coupling produces straighter trajectories; validates
+//!   the `SinkhornGreedy` pairing mode used here
+//! - Kornilov et al. (2024, NeurIPS), “Optimal Flow Matching” -- recovers the unbiased
+//!   (not just minibatch) OT map for one-step generation; a potential future pairing mode
+//! - Calvo-Ordonez et al. (2025), “Weighted Conditional Flow Matching” -- replaces
+//!   Sinkhorn with an entropic-OT-inspired weighting scheme; cheaper at large batch sizes
 
 use crate::linear::LinearCondField;
 use crate::ode::{integrate_fixed, OdeMethod};

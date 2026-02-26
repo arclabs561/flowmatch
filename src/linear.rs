@@ -2,6 +2,17 @@
 //!
 //! These are intentionally boring baselines: enough structure to test the training loop,
 //! without importing a full ML framework.
+//!
+//! # References
+//!
+//! - Lipman et al., "Flow Matching for Generative Modeling" (2022) --
+//!   foundational paper establishing conditional flow matching with linear
+//!   interpolation paths between noise and data.
+//! - Liu, "Rectified Flow" (2022) -- the reflow procedure that iteratively
+//!   straightens learned flow paths, reducing ODE integration error.
+//! - Roy et al., "2-Rectifications are Enough" (2024) -- proves that two
+//!   rounds of reflow suffice for theoretical convergence guarantees on
+//!   path straightness.
 
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 

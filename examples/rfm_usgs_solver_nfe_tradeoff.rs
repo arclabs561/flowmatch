@@ -15,84 +15,26 @@
 //! FLOWMATCH_T_SCHEDULE=ushaped cargo run -p flowmatch --example rfm_usgs_solver_nfe_tradeoff
 //! ```
 
+mod common;
+
+use common::mean_std;
+use common::usgs::{
+    baseline_sphere_samples, build_support_and_weights, normalize3, parse_usgs_csv,
+};
 use flowmatch::metrics::ot_cost_samples_to_weighted_support;
 use flowmatch::ode::OdeMethod;
 use flowmatch::sd_fm::{
     train_rfm_minibatch_ot_linear, RfmMinibatchOtConfig, RfmMinibatchPairing, SdFmTrainConfig,
     TimestepSchedule,
 };
-use flowmatch::{Error, Result};
-use ndarray::{Array1, Array2};
-use rand::SeedableRng;
-use rand_chacha::ChaCha8Rng;
-use rand_distr::{Distribution, StandardNormal};
-
-const USGS_CSV: &str = include_str!("../examples_data/usgs_eq_m6_2024_limit50.csv.txt");
-
-fn deg_to_rad(x: f32) -> f32 {
-    x * core::f32::consts::PI / 180.0
-}
-
-fn latlon_to_unit_xyz(lat_deg: f32, lon_deg: f32) -> [f32; 3] {
-    let lat = deg_to_rad(lat_deg);
-    let lon = deg_to_rad(lon_deg);
-    let clat = lat.cos();
-    [clat * lon.cos(), clat * lon.sin(), lat.sin()]
-}
-
-fn normalize3(v: [f32; 3]) -> [f32; 3] {
-    let n = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt();
-    if n > 0.0 && n.is_finite() {
-        [v[0] / n, v[1] / n, v[2] / n]
-    } else {
-        [1.0, 0.0, 0.0]
-    }
-}
-
-fn mean_std(xs: &[f64]) -> (f64, f64) {
-    let n = xs.len().max(1) as f64;
-    let mean = xs.iter().sum::<f64>() / n;
-    let var = xs.iter().map(|&x| (x - mean) * (x - mean)).sum::<f64>() / n;
-    (mean, var.sqrt())
-}
+use flowmatch::Result;
+use ndarray::Array2;
 
 fn main() -> Result<()> {
-    // Load USGS data.
-    let mut pts: Vec<[f32; 3]> = Vec::new();
-    let mut mags: Vec<f32> = Vec::new();
-    for (line_idx, line) in USGS_CSV.lines().enumerate() {
-        if line_idx == 0 || line.trim().is_empty() {
-            continue;
-        }
-        let parts: Vec<&str> = line.split(',').collect();
-        if parts.len() < 6 {
-            continue;
-        }
-        let lat: f32 = parts[1].parse().unwrap_or(0.0);
-        let lon: f32 = parts[2].parse().unwrap_or(0.0);
-        let mag: f32 = parts[4].parse().unwrap_or(0.0);
-        if !lat.is_finite() || !lon.is_finite() || !mag.is_finite() {
-            continue;
-        }
-        pts.push(latlon_to_unit_xyz(lat, lon));
-        mags.push(mag);
-    }
-    if pts.len() < 10 {
-        return Err(Error::Domain("not enough parsed USGS points"));
-    }
-
-    let n = pts.len();
+    let data = parse_usgs_csv(10)?;
+    let n = data.pts.len();
     let d = 3usize;
-    let mut y = Array2::<f32>::zeros((n, d));
-    for (i, p) in pts.iter().enumerate() {
-        y[[i, 0]] = p[0];
-        y[[i, 1]] = p[1];
-        y[[i, 2]] = p[2];
-    }
-    let mut b = Array1::<f32>::zeros(n);
-    for i in 0..n {
-        b[i] = (mags[i] - 5.0).max(0.0).exp();
-    }
+    let (y, b) = build_support_and_weights(&data);
     let b_norm = &b / b.sum();
 
     let t_schedule = match std::env::var("FLOWMATCH_T_SCHEDULE").as_deref() {
@@ -118,23 +60,12 @@ fn main() -> Result<()> {
     };
     let model = train_rfm_minibatch_ot_linear(&y.view(), &b.view(), &rfm_cfg, &fm_cfg)?;
 
-    // Baseline: Gaussian → project to sphere.
+    // Baseline: Gaussian -> project to sphere.
     let m = 1_500usize;
     let seeds = [900u64, 901, 902, 903, 904];
     let mut baseline_vals: Vec<f64> = Vec::new();
     for &seed in &seeds {
-        let mut rng = ChaCha8Rng::seed_from_u64(seed);
-        let mut xs0 = Array2::<f32>::zeros((m, d));
-        for i in 0..m {
-            let v = normalize3([
-                StandardNormal.sample(&mut rng),
-                StandardNormal.sample(&mut rng),
-                StandardNormal.sample(&mut rng),
-            ]);
-            xs0[[i, 0]] = v[0];
-            xs0[[i, 1]] = v[1];
-            xs0[[i, 2]] = v[2];
-        }
+        let xs0 = baseline_sphere_samples(m, d, seed);
         let ot = ot_cost_samples_to_weighted_support(
             &xs0.view(),
             &y.view(),
@@ -204,7 +135,7 @@ fn main() -> Result<()> {
         let (em, es) = mean_std(&e_vals);
         let (hm, hs) = mean_std(&h_vals);
         println!(
-            "NFE={:>2}  Euler(steps={:>2}): mean={:.4}±{:.4} | Heun(steps={:>2}, NFE≈{}): mean={:.4}±{:.4}",
+            "NFE={:>2}  Euler(steps={:>2}): mean={:.4}+/-{:.4} | Heun(steps={:>2}, NFE~{}): mean={:.4}+/-{:.4}",
             nfe,
             nfe,
             em,

@@ -5,6 +5,22 @@
 //!
 //! Public invariant: we do **not** silently normalize in methods named like “validate”.
 //! If we normalize, the function name says so (`normalize_*`).
+//!
+//! # Simplex Flow Matching: Related Work
+//!
+//! Linear interpolation on the simplex (`simplex_lerp`) has known pathologies: Stark et al.
+//! (2024) show it produces discontinuous training targets. Several alternatives exist:
+//!
+//! - Davis et al. (2024, NeurIPS), “Fisher Flow Matching” -- equips the simplex with the
+//!   Fisher-Rao metric from information geometry; geodesics under this metric respect the
+//!   simplex boundary and avoid the linear interpolation discontinuity
+//! - Cheng et al. (2024, NeurIPS), “Categorical Flow Matching on Statistical Manifolds”
+//!   -- complementary Fisher-information-metric approach with “Fisher-efficient” updates
+//! - Stark et al. (2024), “Dirichlet Flow Matching with Applications to DNA Sequence
+//!   Design” -- uses Dirichlet interpolation paths instead of linear; `sample_dirichlet`
+//!   below partially supports this approach
+//! - Tang et al. (2025), “Gumbel-Softmax Flow and Score Matching” -- Gumbel-Softmax
+//!   reparameterization for scaling simplex FM to higher dimensions
 
 use crate::{Error, Result};
 

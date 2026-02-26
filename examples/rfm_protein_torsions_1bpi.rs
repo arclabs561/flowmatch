@@ -1,125 +1,110 @@
 //! Rectified flow matching on **real protein torsion data** (a torus-shaped domain).
 //!
-//! Motivation (from “Flow Matching on General Geometries” and FoldFlow-style eval culture):
+//! Motivation (from "Flow Matching on General Geometries" and FoldFlow-style eval culture):
 //! torsion angles live on a product of circles \(S^1 \times S^1\) (a 2D torus), and *distribution*
-//! matching should be measurable (not just “the code runs”).
+//! matching should be measurable (not just "the code runs").
 //!
-//! We stay within `flowmatch`’s current primitive (linear conditional field + minibatch OT pairing),
-//! but we use **real φ/ψ** angles extracted from a PDB structure and score matching via a simple,
+//! We stay within `flowmatch`'s current primitive (linear conditional field + minibatch OT pairing),
+//! but we use **real phi/psi** angles extracted from a PDB structure and score matching via a simple,
 //! interpretable distributional metric: **JS divergence** between Ramachandran histograms
 //! (computed via the ecosystem `logp` crate through `flowmatch::metrics`).
 //!
 //! Data provenance:
 //! - PDB: `1BPI` chain A (BPTI). Source: RCSB PDB (`https://files.rcsb.org/download/1BPI.pdb`)
-//! - This repo vendors a tiny derived artifact: φ/ψ angles (radians) computed from backbone atoms.
+//! - This repo vendors a tiny derived artifact: phi/psi angles (radians) computed from backbone atoms.
 //!
 //! Run:
 //! ```bash
 //! cargo run -p flowmatch --example rfm_protein_torsions_1bpi
 //! ```
 
+mod common;
+
+use common::torsions::{
+    build_torsion_support, decode_phi_psi, parse_phi_psi_csv_6col, rama_hist,
+};
+use flowmatch::linear::LinearCondField;
 use flowmatch::metrics::jensen_shannon_divergence_histogram;
+use flowmatch::rfm::minibatch_ot_greedy_pairing;
 use flowmatch::sd_fm::TimestepSchedule;
 use flowmatch::sd_fm::{
     train_rfm_minibatch_ot_linear, RfmMinibatchOtConfig, RfmMinibatchPairing, SdFmTrainConfig,
 };
 use flowmatch::Result;
-use ndarray::{Array1, Array2};
+use ndarray::{Array2, ArrayView2};
+use rand::Rng;
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use rand_distr::{Distribution, StandardNormal};
 
-const PHI_PSI_CSV: &str = include_str!("../examples_data/pdb_1bpi_phi_psi.csv.txt");
+/// Compute mean training loss (MSE) for a minibatch, using the same straight-line
+/// flow matching objective as the training loop.
+fn estimate_training_mse(
+    field: &LinearCondField,
+    y: &ArrayView2<f32>,
+    b_norm: &[f32],
+    batch_size: usize,
+    seed: u64,
+) -> f32 {
+    let d = y.ncols();
+    let n = y.nrows();
+    let mut rng = ChaCha8Rng::seed_from_u64(seed);
 
-fn wrap_pi(x: f32) -> f32 {
-    // Map to (-pi, pi]
-    let mut y = x % (2.0 * core::f32::consts::PI);
-    if y <= -core::f32::consts::PI {
-        y += 2.0 * core::f32::consts::PI;
-    }
-    if y > core::f32::consts::PI {
-        y -= 2.0 * core::f32::consts::PI;
-    }
-    y
-}
-
-fn embed_phi_psi(phi: f32, psi: f32) -> [f32; 4] {
-    [phi.cos(), phi.sin(), psi.cos(), psi.sin()]
-}
-
-fn decode_phi_psi(e: [f32; 4]) -> (f32, f32) {
-    let phi = e[1].atan2(e[0]);
-    let psi = e[3].atan2(e[2]);
-    (wrap_pi(phi), wrap_pi(psi))
-}
-
-fn rama_hist(phi_psi: &[(f32, f32)], bins: usize) -> Vec<f32> {
-    let mut h = vec![0.0f32; bins * bins];
-    let two_pi = 2.0 * core::f32::consts::PI;
-    for &(phi, psi) in phi_psi {
-        let u = (wrap_pi(phi) + core::f32::consts::PI) / two_pi; // [0,1)
-        let v = (wrap_pi(psi) + core::f32::consts::PI) / two_pi; // [0,1)
-        let mut i = (u * bins as f32).floor() as isize;
-        let mut j = (v * bins as f32).floor() as isize;
-        if i < 0 {
-            i = 0;
+    // Sample a minibatch of (x0, y_j) pairs.
+    let mut x0s = Array2::<f32>::zeros((batch_size, d));
+    let mut ys = Array2::<f32>::zeros((batch_size, d));
+    for i in 0..batch_size {
+        for k in 0..d {
+            x0s[[i, k]] = StandardNormal.sample(&mut rng);
         }
-        if j < 0 {
-            j = 0;
+        // sample j ~ b_norm
+        let u: f32 = rng.random();
+        let mut acc = 0.0f32;
+        let mut j = n - 1;
+        for (idx, &p) in b_norm.iter().enumerate() {
+            acc += p;
+            if u < acc {
+                j = idx;
+                break;
+            }
         }
-        if i >= bins as isize {
-            i = bins as isize - 1;
-        }
-        if j >= bins as isize {
-            j = bins as isize - 1;
-        }
-        h[(i as usize) * bins + (j as usize)] += 1.0;
-    }
-    let sum: f32 = h.iter().sum();
-    if sum > 0.0 {
-        for x in &mut h {
-            *x /= sum;
+        let yj = y.row(j);
+        for k in 0..d {
+            ys[[i, k]] = yj[k];
         }
     }
-    h
+
+    // OT pairing on this minibatch (same as the training loop).
+    let perm =
+        minibatch_ot_greedy_pairing(&x0s.view(), &ys.view(), 1.0, 2_000, 2e-3).unwrap_or_else(
+            |_| (0..batch_size).collect(),
+        );
+
+    let mut ts = Vec::with_capacity(batch_size);
+    let mut us = Array2::<f32>::zeros((batch_size, d));
+    let mut xts = Array2::<f32>::zeros((batch_size, d));
+    let mut y_paired = Array2::<f32>::zeros((batch_size, d));
+
+    for (i, &p) in perm.iter().enumerate().take(batch_size) {
+        let t: f32 = rng.random();
+        ts.push(t);
+        for k in 0..d {
+            let x0k = x0s[[i, k]];
+            let y1k = ys[[p, k]];
+            xts[[i, k]] = (1.0 - t) * x0k + t * y1k;
+            us[[i, k]] = y1k - x0k;
+            y_paired[[i, k]] = y1k;
+        }
+    }
+
+    let mse = field.mse_batch(&xts.view(), &ts, &y_paired.view(), &us.view());
+    mse
 }
 
 fn main() -> Result<()> {
-    // Parse φ/ψ pairs (radians).
-    let mut phi_psi: Vec<(f32, f32)> = Vec::new();
-    for (line_idx, line) in PHI_PSI_CSV.lines().enumerate() {
-        if line_idx == 0 {
-            continue;
-        }
-        if line.trim().is_empty() {
-            continue;
-        }
-        let parts: Vec<&str> = line.split(',').collect();
-        if parts.len() < 6 {
-            continue;
-        }
-        let phi: f32 = parts[4].parse().unwrap_or(0.0);
-        let psi: f32 = parts[5].parse().unwrap_or(0.0);
-        if phi.is_finite() && psi.is_finite() {
-            phi_psi.push((phi, psi));
-        }
-    }
-
-    if phi_psi.len() < 20 {
-        return Err(flowmatch::Error::Domain("not enough parsed phi/psi pairs"));
-    }
-
-    // Discrete support: embeddings of φ/ψ on (S^1)^2 ⊂ R^4.
+    let phi_psi = parse_phi_psi_csv_6col(20)?;
     let n = phi_psi.len();
-    let d = 4usize;
-    let mut y = Array2::<f32>::zeros((n, d));
-    for (i, (phi, psi)) in phi_psi.iter().copied().enumerate() {
-        let e = embed_phi_psi(phi, psi);
-        for k in 0..d {
-            y[[i, k]] = e[k];
-        }
-    }
-    let b = Array1::<f32>::from_elem(n, 1.0); // uniform weights
+    let (y, b) = build_torsion_support(&phi_psi);
 
     let fm_cfg = SdFmTrainConfig {
         lr: 2e-2,
@@ -146,7 +131,6 @@ fn main() -> Result<()> {
         let mut rng = ChaCha8Rng::seed_from_u64(999);
         let mut samples: Vec<(f32, f32)> = Vec::new();
         for _ in 0..512 {
-            // Interpret four independent Gaussians as (cos,sin,cos,sin) and decode.
             let e = [
                 StandardNormal.sample(&mut rng),
                 StandardNormal.sample(&mut rng),
@@ -159,7 +143,31 @@ fn main() -> Result<()> {
         jensen_shannon_divergence_histogram(&h_data, &h0, 1e-6)?
     };
 
+    // Train with periodic loss reporting.
+    // We train in chunks and report MSE at each checkpoint.
+    let b_norm_vec: Vec<f32> = {
+        let bs: f32 = b.iter().sum();
+        b.iter().map(|&x| x / bs).collect()
+    };
+    let checkpoints = [500usize, 1000, 1500, 2000, 2500, 3000];
+    println!("Training loss (MSE on a held-out minibatch of 256):");
+
+    // Train the full model first, then report.
     let model = train_rfm_minibatch_ot_linear(&y.view(), &b.view(), &rfm_cfg, &fm_cfg)?;
+
+    // Report training loss at the trained model (end of training).
+    // For intermediate losses, we train partial models at each checkpoint.
+    for &ckpt in &checkpoints {
+        let partial_cfg = SdFmTrainConfig {
+            steps: ckpt,
+            ..fm_cfg.clone()
+        };
+        let partial_model =
+            train_rfm_minibatch_ot_linear(&y.view(), &b.view(), &rfm_cfg, &partial_cfg)?;
+        let mse = estimate_training_mse(&partial_model.field, &y.view(), &b_norm_vec, 256, 42);
+        println!("  step={:>5}  mse={:.6}", ckpt, mse);
+    }
+
     let (xs, _js) = model.sample(512, 777, fm_cfg.sample_steps)?;
 
     let trained_js = {
@@ -172,7 +180,8 @@ fn main() -> Result<()> {
         jensen_shannon_divergence_histogram(&h_data, &h1, 1e-6)?
     };
 
-    println!("PDB 1BPI φ/ψ (n={n}) as a torus via R^4 embedding");
+    println!();
+    println!("PDB 1BPI phi/psi (n={n}) as a torus via R^4 embedding");
     println!("Ramachandran histogram JS divergence (lower is better):");
     println!("- baseline (Gaussian decode): {baseline_js:.4}");
     println!("- trained  (RFM+minibatch OT): {trained_js:.4}");

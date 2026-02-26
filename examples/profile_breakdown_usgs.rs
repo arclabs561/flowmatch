@@ -1,6 +1,6 @@
-//! Timing breakdown for the USGS “sphere-ish” RFM loop.
+//! Timing breakdown for the USGS "sphere-ish" RFM loop.
 //!
-//! This is a pragmatic “profile” when we don't have a working CPU-profiler toolchain:
+//! This is a pragmatic "profile" when we don't have a working CPU-profiler toolchain:
 //! it tells you where time is going (sampling vs Sinkhorn vs SGD).
 //!
 //! Run:
@@ -8,30 +8,20 @@
 //! cargo run -p flowmatch --example profile_breakdown_usgs
 //! ```
 
+mod common;
+
+use common::usgs::{build_support_and_weights, parse_usgs_csv};
 use flowmatch::linear::LinearCondField;
 use flowmatch::rfm::minibatch_ot_greedy_pairing;
 use flowmatch::rfm::minibatch_rowwise_nearest_pairing;
 use flowmatch::sd_fm::RfmMinibatchOtConfig;
-use flowmatch::{Error, Result};
+use flowmatch::Result;
 use ndarray::{Array1, Array2};
 use rand::Rng;
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use rand_distr::{Distribution, StandardNormal};
 use std::time::{Duration, Instant};
-
-const USGS_CSV: &str = include_str!("../examples_data/usgs_eq_m6_2024_limit50.csv.txt");
-
-fn deg_to_rad(x: f32) -> f32 {
-    x * core::f32::consts::PI / 180.0
-}
-
-fn latlon_to_unit_xyz(lat_deg: f32, lon_deg: f32) -> [f32; 3] {
-    let lat = deg_to_rad(lat_deg);
-    let lon = deg_to_rad(lon_deg);
-    let clat = lat.cos();
-    [clat * lon.cos(), clat * lon.sin(), lat.sin()]
-}
 
 fn sample_categorical_from_probs(probs: &[f32], rng: &mut impl rand::Rng) -> usize {
     let u: f32 = rng.random();
@@ -55,46 +45,14 @@ struct Timings {
 }
 
 fn main() -> Result<()> {
-    // Load dataset.
     let t0 = Instant::now();
-    let mut pts: Vec<[f32; 3]> = Vec::new();
-    let mut mags: Vec<f32> = Vec::new();
-    for (line_idx, line) in USGS_CSV.lines().enumerate() {
-        if line_idx == 0 || line.trim().is_empty() {
-            continue;
-        }
-        let parts: Vec<&str> = line.split(',').collect();
-        if parts.len() < 6 {
-            continue;
-        }
-        let lat: f32 = parts[1].parse().unwrap_or(0.0);
-        let lon: f32 = parts[2].parse().unwrap_or(0.0);
-        let mag: f32 = parts[4].parse().unwrap_or(0.0);
-        if !lat.is_finite() || !lon.is_finite() || !mag.is_finite() {
-            continue;
-        }
-        pts.push(latlon_to_unit_xyz(lat, lon));
-        mags.push(mag);
-    }
+    let data = parse_usgs_csv(10)?;
     let load_time = t0.elapsed();
 
-    if pts.len() < 10 {
-        return Err(Error::Domain("not enough parsed USGS points"));
-    }
-    let n = pts.len();
+    let n = data.pts.len();
     let d = 3usize;
+    let (y, b) = build_support_and_weights(&data);
 
-    let mut y = Array2::<f32>::zeros((n, d));
-    for (i, p) in pts.iter().enumerate() {
-        y[[i, 0]] = p[0];
-        y[[i, 1]] = p[1];
-        y[[i, 2]] = p[2];
-    }
-
-    let mut b = Array1::<f32>::zeros(n);
-    for i in 0..n {
-        b[i] = (mags[i] - 5.0).max(0.0).exp();
-    }
     let bs = b.sum();
     let b_norm: Vec<f32> = b.iter().map(|&x| x / bs).collect();
 

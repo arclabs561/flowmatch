@@ -1,26 +1,23 @@
-//! Timing breakdown for the torsions (φ/ψ) RFM loop.
+//! Timing breakdown for the torsions (phi/psi) RFM loop.
 //!
 //! Run:
 //! ```bash
 //! cargo run -p flowmatch --example profile_breakdown_torsions
 //! ```
 
+mod common;
+
+use common::torsions::{build_torsion_support, parse_phi_psi_csv_6col};
 use flowmatch::linear::LinearCondField;
 use flowmatch::rfm::{minibatch_ot_greedy_pairing, minibatch_rowwise_nearest_pairing};
 use flowmatch::sd_fm::RfmMinibatchOtConfig;
-use flowmatch::{Error, Result};
+use flowmatch::Result;
 use ndarray::{Array1, Array2};
 use rand::Rng;
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use rand_distr::{Distribution, StandardNormal};
 use std::time::{Duration, Instant};
-
-const PHI_PSI_CSV: &str = include_str!("../examples_data/pdb_1bpi_phi_psi.csv.txt");
-
-fn embed_phi_psi(phi: f32, psi: f32) -> [f32; 4] {
-    [phi.cos(), phi.sin(), psi.cos(), psi.sin()]
-}
 
 #[derive(Default, Debug, Clone)]
 struct Timings {
@@ -33,36 +30,12 @@ struct Timings {
 
 fn main() -> Result<()> {
     let t0 = Instant::now();
-    let mut phi_psi: Vec<(f32, f32)> = Vec::new();
-    for (line_idx, line) in PHI_PSI_CSV.lines().enumerate() {
-        if line_idx == 0 || line.trim().is_empty() {
-            continue;
-        }
-        let parts: Vec<&str> = line.split(',').collect();
-        if parts.len() < 6 {
-            continue;
-        }
-        let phi: f32 = parts[4].parse().unwrap_or(0.0);
-        let psi: f32 = parts[5].parse().unwrap_or(0.0);
-        if phi.is_finite() && psi.is_finite() {
-            phi_psi.push((phi, psi));
-        }
-    }
+    let phi_psi = parse_phi_psi_csv_6col(20)?;
     let load_time = t0.elapsed();
 
-    if phi_psi.len() < 20 {
-        return Err(Error::Domain("not enough parsed phi/psi pairs"));
-    }
-
+    let (y, _b) = build_torsion_support(&phi_psi);
     let n = phi_psi.len();
     let d = 4usize;
-    let mut y = Array2::<f32>::zeros((n, d));
-    for (i, (phi, psi)) in phi_psi.iter().copied().enumerate() {
-        let e = embed_phi_psi(phi, psi);
-        for k in 0..d {
-            y[[i, k]] = e[k];
-        }
-    }
     let b_norm: Vec<f32> = vec![1.0 / (n as f32); n];
 
     // Config
