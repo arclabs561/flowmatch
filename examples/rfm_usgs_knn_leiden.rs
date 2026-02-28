@@ -1,8 +1,8 @@
-//! Full-pipeline structure demo (flowmatch + wass + parti + jin):
+//! Full-pipeline structure demo (flowmatch + wass + sheaf + jin):
 //!
 //! - Train RFM on real USGS earthquake locations (sphere in R^3).
 //! - Sample points from the learned flow.
-//! - Build a kNN graph using `parti`'s `knn_graph_with_config` (HNSW via `jin`).
+//! - Build a kNN graph using `sheaf`'s `knn_graph_with_config` (HNSW via `jin`).
 //! - Run Leiden community detection and compare **community-size distributions**
 //!   against the real-data graph via JS divergence.
 //!
@@ -27,8 +27,8 @@ use flowmatch::Result;
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use rand_distr::{Distribution, StandardNormal};
-use parti::community::CommunityDetection;
-use parti::{knn_graph_with_config, KnnGraphConfig, Leiden, WeightFunction};
+use sheaf::community::CommunityDetection;
+use sheaf::{knn_graph_with_config, KnnGraphConfig, Leiden, WeightFunction};
 
 fn main() -> Result<()> {
     let data = parse_usgs_csv(10)?;
@@ -44,7 +44,7 @@ fn main() -> Result<()> {
         ..Default::default()
     };
     let graph_real = knn_graph_with_config(&embeddings_real, &knn_cfg)
-        .map_err(|_| flowmatch::Error::Domain("parti::knn_graph_with_config failed"))?;
+        .map_err(|_| flowmatch::Error::Domain("sheaf::knn_graph_with_config failed"))?;
     let leiden = Leiden::new().with_resolution(1.0).with_seed(42);
     let labels_real = leiden
         .detect(&graph_real)
@@ -64,7 +64,7 @@ fn main() -> Result<()> {
             emb.push(vec![v[0], v[1], v[2]]);
         }
         let g = knn_graph_with_config(&emb, &knn_cfg)
-            .map_err(|_| flowmatch::Error::Domain("parti knn_graph failed (baseline)"))?;
+            .map_err(|_| flowmatch::Error::Domain("sheaf knn_graph failed (baseline)"))?;
         let lab = leiden
             .detect(&g)
             .map_err(|_| flowmatch::Error::Domain("Leiden failed (baseline)"))?;
@@ -98,7 +98,7 @@ fn main() -> Result<()> {
             emb.push(vec![v[0], v[1], v[2]]);
         }
         let g = knn_graph_with_config(&emb, &knn_cfg)
-            .map_err(|_| flowmatch::Error::Domain("parti knn_graph failed (trained)"))?;
+            .map_err(|_| flowmatch::Error::Domain("sheaf knn_graph failed (trained)"))?;
         let lab = leiden
             .detect(&g)
             .map_err(|_| flowmatch::Error::Domain("Leiden failed (trained)"))?;

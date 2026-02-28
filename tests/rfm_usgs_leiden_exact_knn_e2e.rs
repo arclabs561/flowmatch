@@ -9,8 +9,8 @@ use petgraph::graph::UnGraph;
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use rand_distr::{Distribution, StandardNormal};
-use parti::community::CommunityDetection;
-use parti::Leiden;
+use sheaf::community::CommunityDetection;
+use sheaf::Leiden;
 
 const USGS_CSV: &str = include_str!("../examples_data/usgs_eq_m6_2024_limit50.csv.txt");
 

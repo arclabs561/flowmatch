@@ -1,10 +1,10 @@
-//! RFM on **real geodata**, evaluated via **cluster-mass matching** (uses `parti`).
+//! RFM on **real geodata**, evaluated via **cluster-mass matching** (uses `sheaf`).
 //!
 //! Uses OT-CFM minibatch coupling (Tong et al., 2023) for straighter flow trajectories.
 //!
 //! This goes "deeper" than a single OT/JS scalar on raw points by checking whether the model
 //! reproduces **mesoscale structure**:
-//! - cluster the *real* earthquake points with `parti::Kmeans`,
+//! - cluster the *real* earthquake points with `sheaf::Kmeans`,
 //! - compute the (magnitude-weighted) **cluster mass distribution**,
 //! - assign generated samples to the same centroids and compare the induced cluster-mass
 //!   distribution with **Jensen--Shannon divergence** (via `logp` through `flowmatch::metrics`).
@@ -26,8 +26,8 @@ use flowmatch::sd_fm::{
     train_rfm_minibatch_ot_linear, RfmMinibatchOtConfig, RfmMinibatchPairing, SdFmTrainConfig,
 };
 use flowmatch::Result;
-use parti::cluster::{Clustering, Kmeans};
-use parti::distribution_distance::{DistributionDistance, DistributionDistanceConfig};
+use sheaf::cluster::{Clustering, Kmeans};
+use sheaf::distribution_distance::{DistributionDistance, DistributionDistanceConfig};
 
 fn main() -> Result<()> {
     let data = parse_usgs_csv(10)?;
@@ -41,10 +41,10 @@ fn main() -> Result<()> {
     let labels = Kmeans::new(k)
         .with_seed(123)
         .fit_predict(&data_vec)
-        .map_err(|_| flowmatch::Error::Domain("parti::Kmeans failed to cluster the USGS points"))?;
+        .map_err(|_| flowmatch::Error::Domain("sheaf::Kmeans failed to cluster the USGS points"))?;
     if labels.len() != n {
         return Err(flowmatch::Error::Domain(
-            "parti::Kmeans returned wrong label length",
+            "sheaf::Kmeans returned wrong label length",
         ));
     }
 
@@ -57,7 +57,7 @@ fn main() -> Result<()> {
         let c = labels[i];
         if c >= k {
             return Err(flowmatch::Error::Domain(
-                "parti::Kmeans produced out-of-range label",
+                "sheaf::Kmeans produced out-of-range label",
             ));
         }
         centers[c][0] += data.pts[i][0];
@@ -90,10 +90,10 @@ fn main() -> Result<()> {
             ..Default::default()
         };
         let sw = DistributionDistance::compute(y.view(), xs.view(), &cfg)
-            .map_err(|_| flowmatch::Error::Domain("parti::DistributionDistance failed"))?
+            .map_err(|_| flowmatch::Error::Domain("sheaf::DistributionDistance failed"))?
             .sliced_wasserstein
             .ok_or(flowmatch::Error::Domain(
-                "parti sliced_wasserstein unavailable",
+                "sheaf sliced_wasserstein unavailable",
             ))?;
         (js, sw)
     };
@@ -132,10 +132,10 @@ fn main() -> Result<()> {
             ..Default::default()
         };
         let sw = DistributionDistance::compute(y.view(), xs.view(), &cfg)
-            .map_err(|_| flowmatch::Error::Domain("parti::DistributionDistance failed"))?
+            .map_err(|_| flowmatch::Error::Domain("sheaf::DistributionDistance failed"))?
             .sliced_wasserstein
             .ok_or(flowmatch::Error::Domain(
-                "parti sliced_wasserstein unavailable",
+                "sheaf sliced_wasserstein unavailable",
             ))?;
         (js, sw)
     };

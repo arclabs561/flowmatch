@@ -5,10 +5,10 @@
 //! - sampling
 //! - multiple evaluation views:
 //!   - OT cost to weighted support (wass)
-//!   - two-sample sliced Wasserstein (parti + wass)
-//!   - cluster-mass JS (parti KMeans + logp)
-//!   - graph+community JS (exact kNN + parti Leiden; deterministic)
-//!   - optional: kNN via HNSW (parti + jin) + Leiden (non-deterministic build)
+//!   - two-sample sliced Wasserstein (sheaf + wass)
+//!   - cluster-mass JS (sheaf KMeans + logp)
+//!   - graph+community JS (exact kNN + sheaf Leiden; deterministic)
+//!   - optional: kNN via HNSW (sheaf + jin) + Leiden (non-deterministic build)
 //! - timing breakdown per stage
 //!
 //! Run:
@@ -30,10 +30,10 @@ use flowmatch::sd_fm::RfmMinibatchPairing;
 use flowmatch::sd_fm::TimestepSchedule;
 use flowmatch::sd_fm::{train_rfm_minibatch_ot_linear, RfmMinibatchOtConfig, SdFmTrainConfig};
 use flowmatch::{Error, Result};
-use parti::cluster::{Clustering, Kmeans};
-use parti::community::CommunityDetection;
-use parti::distribution_distance::{DistributionDistance, DistributionDistanceConfig};
-use parti::{knn_graph_with_config, KnnGraphConfig, Leiden, WeightFunction};
+use sheaf::cluster::{Clustering, Kmeans};
+use sheaf::community::CommunityDetection;
+use sheaf::distribution_distance::{DistributionDistance, DistributionDistanceConfig};
+use sheaf::{knn_graph_with_config, KnnGraphConfig, Leiden, WeightFunction};
 use std::time::{Duration, Instant};
 
 #[derive(Default)]
@@ -87,7 +87,7 @@ fn main() -> Result<()> {
     let pairing = match std::env::var("FLOWMATCH_PAIRING").as_deref() {
         Ok("rowwise") => RfmMinibatchPairing::RowwiseNearest,
         Ok("exp") => RfmMinibatchPairing::ExpGreedy { temp: 0.2 },
-        Ok("partial_rowwise") => RfmMinibatchPairing::PartialRowwise { keep_frac },
+        Ok("sheafal_rowwise") => RfmMinibatchPairing::PartialRowwise { keep_frac },
         Ok("sinkhorn_selective") => RfmMinibatchPairing::SinkhornSelective { keep_frac },
         _ => RfmMinibatchPairing::SinkhornGreedy,
     };
@@ -124,21 +124,21 @@ fn main() -> Result<()> {
         ..Default::default()
     };
     let sw0 = DistributionDistance::compute(y.view(), xs0.view(), &sw_cfg)
-        .map_err(|_| Error::Domain("parti::DistributionDistance failed"))?
+        .map_err(|_| Error::Domain("sheaf::DistributionDistance failed"))?
         .sliced_wasserstein
-        .ok_or(Error::Domain("parti sliced_wasserstein unavailable"))?;
+        .ok_or(Error::Domain("sheaf sliced_wasserstein unavailable"))?;
     let sw1 = DistributionDistance::compute(y.view(), xs1.view(), &sw_cfg)
-        .map_err(|_| Error::Domain("parti::DistributionDistance failed"))?
+        .map_err(|_| Error::Domain("sheaf::DistributionDistance failed"))?
         .sliced_wasserstein
-        .ok_or(Error::Domain("parti sliced_wasserstein unavailable"))?;
+        .ok_or(Error::Domain("sheaf sliced_wasserstein unavailable"))?;
 
-    // Cluster mass JS via parti KMeans.
+    // Cluster mass JS via sheaf KMeans.
     let k = 6usize;
     let data_vec: Vec<Vec<f32>> = data.pts.iter().map(|p| vec![p[0], p[1], p[2]]).collect();
     let labels = Kmeans::new(k)
         .with_seed(123)
         .fit_predict(&data_vec)
-        .map_err(|_| Error::Domain("parti::Kmeans failed to cluster the USGS points"))?;
+        .map_err(|_| Error::Domain("sheaf::Kmeans failed to cluster the USGS points"))?;
     let bsum: f32 = b.sum();
     let mut centers = vec![[0.0f32; 3]; k];
     let mut counts = vec![0usize; k];
@@ -225,7 +225,7 @@ fn main() -> Result<()> {
     let js_leiden1 = jensen_shannon_divergence_histogram(&dist_real, &dist1, 1e-6)?;
     pt.exact_knn_leiden = t.elapsed();
 
-    // --- Optional: kNN via HNSW (parti + jin); not deterministic, but shows the full stack.
+    // --- Optional: kNN via HNSW (sheaf + jin); not deterministic, but shows the full stack.
     let t = Instant::now();
     let knn_cfg = KnnGraphConfig {
         k: 10.min(n.saturating_sub(1)),
@@ -239,11 +239,11 @@ fn main() -> Result<()> {
         let emb1: Vec<Vec<f32>> = xs1_vec.iter().map(|p| vec![p[0], p[1], p[2]]).collect();
 
         let gr = knn_graph_with_config(&emb_real, &knn_cfg)
-            .map_err(|_| Error::Domain("parti knn_graph failed (real)"))?;
+            .map_err(|_| Error::Domain("sheaf knn_graph failed (real)"))?;
         let g0 = knn_graph_with_config(&emb0, &knn_cfg)
-            .map_err(|_| Error::Domain("parti knn_graph failed (baseline)"))?;
+            .map_err(|_| Error::Domain("sheaf knn_graph failed (baseline)"))?;
         let g1 = knn_graph_with_config(&emb1, &knn_cfg)
-            .map_err(|_| Error::Domain("parti knn_graph failed (trained)"))?;
+            .map_err(|_| Error::Domain("sheaf knn_graph failed (trained)"))?;
 
         let lr = leiden
             .detect(&gr)
@@ -282,7 +282,7 @@ fn main() -> Result<()> {
         sw1 / sw0
     );
     println!(
-        "- Cluster-mass JS (parti KMeans): baseline={js_mass0:.4}  trained={js_mass1:.4}  ratio={:.3}",
+        "- Cluster-mass JS (sheaf KMeans): baseline={js_mass0:.4}  trained={js_mass1:.4}  ratio={:.3}",
         js_mass1 / js_mass0
     );
     println!(
@@ -292,7 +292,7 @@ fn main() -> Result<()> {
     match maybe_hnsw {
         Ok((js0, js1)) => {
             println!(
-                "- HNSW-kNN+Leiden JS (parti+jin; non-deterministic): baseline={js0:.4}  trained={js1:.4}  ratio={:.3}",
+                "- HNSW-kNN+Leiden JS (sheaf+jin; non-deterministic): baseline={js0:.4}  trained={js1:.4}  ratio={:.3}",
                 js1 / js0
             );
         }
