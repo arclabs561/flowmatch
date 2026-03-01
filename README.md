@@ -23,7 +23,7 @@ fm_cfg:  steps=800 batch=256 lr=0.008 seed=9 euler_steps=40
 sample_mse_to_assigned_y = 0.0367
 ```
 
-**Straighter trajectories via minibatch OT**. Rectified flow matching [1] uses Sinkhorn coupling within each minibatch so that noise-to-data paths cross less, reducing integration error:
+**Straighter trajectories via minibatch OT**. Rectified flow matching [7] uses Sinkhorn coupling within each minibatch so that noise-to-data paths cross less, reducing integration error:
 
 ```bash
 cargo run --release --example rfm_minibatch_ot_linear
@@ -89,9 +89,13 @@ cargo run --release --example rfm_poincare_geodesic_ode --features riemannian
 | `ode_comparison` | Euler vs Heun on a 2D circular ODE (radius preservation) |
 | `rfm_poincare_geodesic_ode` | Riemannian ODE on Poincare ball (`--features riemannian`) |
 | `discrete_ctmc_path_evolution` | CTMC path evolution with time-dependent generators |
+| `rfm_conditional_2d` | 2D conditional flow matching visualization |
+| `rfm_two_moons` | Two-moons distribution transport |
+| `burn_sd_fm_semidiscrete_linear` | Semidiscrete FM with Burn backend (`--features burn`) |
+| `burn_rfm_minibatch_ot_linear` | RFM with Burn backend (`--features burn`) |
 | `profile_breakdown_*` | Where training time goes (Sinkhorn vs SGD) |
 
-Requires `--features parti-evals`:
+Requires `--features sheaf-evals`:
 
 | Example | What it shows |
 |---|---|
@@ -118,6 +122,10 @@ Requires `--features parti-evals`:
 - [`logp`](https://github.com/arclabs561/logp) -- information theory (JS divergence)
 - [`hyperball`](https://github.com/arclabs561/hyperball) -- hyperbolic geometry (dev-dependency for Riemannian tests)
 
+## Status
+
+Not yet on crates.io (`publish = false`). MSRV: 1.80.
+
 ## Tests
 
 ```bash
@@ -133,6 +141,7 @@ cargo test -p flowmatch --features burn  # + burn backend tests
 4. Chen & Lipman, [Riemannian Flow Matching on General Geometries](https://arxiv.org/abs/2302.03660) (2023)
 5. de Kruiff et al., [Pullback Flow Matching on Data Manifolds](https://arxiv.org/abs/2410.04543) (2024) -- FM on implicit manifolds without closed-form exp/log maps
 6. Sherry & Smets, [Flow Matching on Lie Groups](https://arxiv.org/abs/2505.08393) (2025) -- specialization to SO(3) and SE(3)
+7. Liu et al., [Flow Straight and Fast: Learning to Generate and Transfer Data with Rectified Flow](https://arxiv.org/abs/2209.03003) (2022) -- rectified flow
 
 ## License
 
