@@ -11,13 +11,13 @@
 //! cargo run -p flowmatch --example rfm_two_moons
 //! ```
 
-use rand::Rng;
 use flowmatch::sd_fm::{
     train_rfm_minibatch_ot_linear, RfmMinibatchOtConfig, RfmMinibatchPairing, SdFmTrainConfig,
     TimestepSchedule,
 };
 use flowmatch::Result;
 use ndarray::{Array1, Array2};
+use rand::Rng;
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use rand_distr::{Distribution, Normal, StandardNormal};
@@ -78,8 +78,7 @@ fn main() -> Result<()> {
         pairing_every: 1,
     };
 
-    let model =
-        train_rfm_minibatch_ot_linear(&target.view(), &b.view(), &rfm_cfg, &fm_cfg)?;
+    let model = train_rfm_minibatch_ot_linear(&target.view(), &b.view(), &rfm_cfg, &fm_cfg)?;
 
     // Sample from the trained flow.
     let n_samples = 500;

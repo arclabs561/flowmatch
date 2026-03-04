@@ -876,7 +876,10 @@ mod tests {
         // NOT the identity permutation that all-zero weights would produce.
         // Check that it's not identity (the failure mode of the old code).
         let identity: Vec<usize> = (0..n).collect();
-        assert_ne!(perm, identity, "exp-greedy collapsed to identity (underflow)");
+        assert_ne!(
+            perm, identity,
+            "exp-greedy collapsed to identity (underflow)"
+        );
     }
 
     proptest! {

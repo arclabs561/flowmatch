@@ -16,9 +16,7 @@
 mod common;
 
 use common::mean_std;
-use common::torsions::{
-    build_torsion_support, decode_phi_psi, parse_phi_psi_csv_2col, rama_hist,
-};
+use common::torsions::{build_torsion_support, decode_phi_psi, parse_phi_psi_csv_2col, rama_hist};
 use flowmatch::metrics::jensen_shannon_divergence_histogram;
 use flowmatch::sd_fm::{
     train_rfm_minibatch_ot_linear, RfmMinibatchOtConfig, RfmMinibatchPairing, SdFmTrainConfig,

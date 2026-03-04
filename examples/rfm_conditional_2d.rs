@@ -81,12 +81,7 @@ fn train_class_field(target: &Array2<f32>, seed: u64) -> LinearCondField {
 ///
 /// Uses the target cluster mean as the conditioning signal y (since at
 /// inference we condition on the class, not on individual target points).
-fn generate_samples(
-    field: &LinearCondField,
-    center: [f32; 2],
-    n: usize,
-    seed: u64,
-) -> Array2<f32> {
+fn generate_samples(field: &LinearCondField, center: [f32; 2], n: usize, seed: u64) -> Array2<f32> {
     let mut rng = ChaCha8Rng::seed_from_u64(seed);
     let dt = 1.0f32 / (SAMPLE_STEPS as f32);
     let y = Array1::from_vec(vec![center[0], center[1]]);
@@ -149,7 +144,10 @@ fn main() {
             .filter(|&i| {
                 let s = [samples[[i, 0]], samples[[i, 1]]];
                 let d_own = dist(&s, &CENTERS[c]);
-                CENTERS.iter().enumerate().all(|(k, ck)| k == c || dist(&s, ck) > d_own)
+                CENTERS
+                    .iter()
+                    .enumerate()
+                    .all(|(k, ck)| k == c || dist(&s, ck) > d_own)
             })
             .count();
 

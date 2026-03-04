@@ -583,7 +583,10 @@ pub fn train_rfm_minibatch_ot_linear(
 
         // 4) FM regression updates along straight line between paired points.
         debug_assert!(perm.len() >= bs, "perm shorter than batch_size");
-        debug_assert!(perm.iter().take(bs).all(|&p| p < bs), "perm index out of range");
+        debug_assert!(
+            perm.iter().take(bs).all(|&p| p < bs),
+            "perm index out of range"
+        );
         for (i, &p) in perm.iter().enumerate().take(bs) {
             let x0 = x0s.row(i);
             let y1 = ys.row(p);
@@ -776,10 +779,16 @@ mod tests {
         // Mock RNG that always returns 0.0 for f32.
         struct ZeroRng;
         impl rand::RngCore for ZeroRng {
-            fn next_u32(&mut self) -> u32 { 0 }
-            fn next_u64(&mut self) -> u64 { 0 }
+            fn next_u32(&mut self) -> u32 {
+                0
+            }
+            fn next_u64(&mut self) -> u64 {
+                0
+            }
             fn fill_bytes(&mut self, dest: &mut [u8]) {
-                for b in dest.iter_mut() { *b = 0; }
+                for b in dest.iter_mut() {
+                    *b = 0;
+                }
             }
         }
 
@@ -1151,11 +1160,8 @@ mod tests {
         let n = 4;
         let d = 2;
         // Simple target: 4 corners of a square.
-        let y = Array2::from_shape_vec(
-            (n, d),
-            vec![1.0, 1.0, 1.0, -1.0, -1.0, 1.0, -1.0, -1.0],
-        )
-        .unwrap();
+        let y = Array2::from_shape_vec((n, d), vec![1.0, 1.0, 1.0, -1.0, -1.0, 1.0, -1.0, -1.0])
+            .unwrap();
         let b = Array1::from_elem(n, 0.25f32);
 
         let pot_cfg = SemidiscreteSgdConfig {
@@ -1202,10 +1208,9 @@ mod tests {
             }
         }
 
-        let mse_trained =
-            trained
-                .field
-                .mse_batch(&xs.view(), &ts, &ys_batch.view(), &us.view());
+        let mse_trained = trained
+            .field
+            .mse_batch(&xs.view(), &ts, &ys_batch.view(), &us.view());
         let mse_untrained = untrained.mse_batch(&xs.view(), &ts, &ys_batch.view(), &us.view());
 
         assert!(

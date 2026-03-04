@@ -20,9 +20,7 @@
 
 mod common;
 
-use common::torsions::{
-    build_torsion_support, decode_phi_psi, parse_phi_psi_csv_6col, rama_hist,
-};
+use common::torsions::{build_torsion_support, decode_phi_psi, parse_phi_psi_csv_6col, rama_hist};
 use flowmatch::linear::LinearCondField;
 use flowmatch::metrics::jensen_shannon_divergence_histogram;
 use flowmatch::rfm::minibatch_ot_greedy_pairing;
@@ -75,10 +73,8 @@ fn estimate_training_mse(
     }
 
     // OT pairing on this minibatch (same as the training loop).
-    let perm =
-        minibatch_ot_greedy_pairing(&x0s.view(), &ys.view(), 1.0, 2_000, 2e-3).unwrap_or_else(
-            |_| (0..batch_size).collect(),
-        );
+    let perm = minibatch_ot_greedy_pairing(&x0s.view(), &ys.view(), 1.0, 2_000, 2e-3)
+        .unwrap_or_else(|_| (0..batch_size).collect());
 
     let mut ts = Vec::with_capacity(batch_size);
     let mut us = Array2::<f32>::zeros((batch_size, d));

@@ -18,11 +18,11 @@
 
 mod common;
 
+use common::community_size_distribution;
 use common::usgs::{
     baseline_sphere_samples, build_support_and_weights, exact_knn_graph, normalize3,
     parse_usgs_csv, project_to_sphere,
 };
-use common::community_size_distribution;
 use flowmatch::metrics::{
     jensen_shannon_divergence_histogram, ot_cost_samples_to_weighted_support,
 };

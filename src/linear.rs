@@ -148,7 +148,10 @@ mod tests {
         let y = Array1::from_vec(vec![4.0f32, 5.0, 6.0]);
         let out = f.eval(&x.view(), 0.5, &y.view());
         for i in 0..3 {
-            assert_eq!(out[i], 0.0, "zero field must produce zero output at dim {i}");
+            assert_eq!(
+                out[i], 0.0,
+                "zero field must produce zero output at dim {i}"
+            );
         }
     }
 
@@ -181,14 +184,22 @@ mod tests {
         let lr = 0.01f32;
 
         let pred_before = f.eval(&x.view(), t, &y.view());
-        let loss_before: f32 = pred_before.iter().zip(u.iter()).map(|(p, t)| (p - t).powi(2)).sum();
+        let loss_before: f32 = pred_before
+            .iter()
+            .zip(u.iter())
+            .map(|(p, t)| (p - t).powi(2))
+            .sum();
 
         for _ in 0..100 {
             f.sgd_step(&x.view(), t, &y.view(), &u.view(), lr);
         }
 
         let pred_after = f.eval(&x.view(), t, &y.view());
-        let loss_after: f32 = pred_after.iter().zip(u.iter()).map(|(p, t)| (p - t).powi(2)).sum();
+        let loss_after: f32 = pred_after
+            .iter()
+            .zip(u.iter())
+            .map(|(p, t)| (p - t).powi(2))
+            .sum();
 
         assert!(
             loss_after < loss_before * 0.01,

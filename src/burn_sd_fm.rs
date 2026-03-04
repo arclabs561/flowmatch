@@ -333,7 +333,10 @@ pub fn train_rfm_minibatch_ot_linear_burn(
 
         // Build the regression batch aligned with the cached permutation.
         debug_assert!(perm.len() >= bs, "perm shorter than batch_size");
-        debug_assert!(perm.iter().take(bs).all(|&p| p < bs), "perm index out of range");
+        debug_assert!(
+            perm.iter().take(bs).all(|&p| p < bs),
+            "perm index out of range"
+        );
         for i in 0..bs {
             let p = perm[i];
             let t = fm_cfg.t_schedule.sample_t(&mut rng);

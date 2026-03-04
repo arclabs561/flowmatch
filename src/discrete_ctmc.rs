@@ -77,9 +77,7 @@ impl DiscreteSchedule {
         match self {
             Self::Linear => 1.0,
             // d/dt sin^2(pi*t/2) = (pi/2) * sin(pi*t)
-            Self::CosineSq => {
-                std::f32::consts::FRAC_PI_2 * (std::f32::consts::PI * t).sin()
-            }
+            Self::CosineSq => std::f32::consts::FRAC_PI_2 * (std::f32::consts::PI * t).sin(),
             // d/dt (1 - cos(pi*t/2)) = (pi/2) * sin(pi*t/2)
             Self::CosineHalf => {
                 std::f32::consts::FRAC_PI_2 * (std::f32::consts::FRAC_PI_2 * t).sin()
@@ -295,7 +293,10 @@ mod tests {
         for i in 0..=steps {
             let t = i as f32 / steps as f32;
             let k = s.kappa(t);
-            assert!(k >= prev - 1e-7, "kappa not monotone at t={t}: {prev} -> {k}");
+            assert!(
+                k >= prev - 1e-7,
+                "kappa not monotone at t={t}: {prev} -> {k}"
+            );
             prev = k;
         }
     }
@@ -323,8 +324,14 @@ mod tests {
         // sin^2(pi/4) = 0.5, but 1 - cos(pi/4) ~= 0.293
         let sq = DiscreteSchedule::CosineSq.kappa(0.5);
         let half = DiscreteSchedule::CosineHalf.kappa(0.5);
-        assert!((sq - 0.5).abs() < 1e-6, "CosineSq(0.5) should be 0.5, got {sq}");
-        assert!((half - 0.5).abs() > 0.1, "CosineHalf(0.5) should differ from 0.5, got {half}");
+        assert!(
+            (sq - 0.5).abs() < 1e-6,
+            "CosineSq(0.5) should be 0.5, got {sq}"
+        );
+        assert!(
+            (half - 0.5).abs() > 0.1,
+            "CosineHalf(0.5) should differ from 0.5, got {half}"
+        );
     }
 
     // --- Conditional probability path tests ---
@@ -371,7 +378,10 @@ mod tests {
     fn conditional_rate_matrix_same_state_is_zero() {
         let r = conditional_rate_matrix(DiscreteSchedule::CosineSq, 0.5, 1, 1, 3, 1e-5).unwrap();
         for &v in r.iter() {
-            assert!(v.abs() < 1e-10, "expected zero matrix when x0 == x1, got {v}");
+            assert!(
+                v.abs() < 1e-10,
+                "expected zero matrix when x0 == x1, got {v}"
+            );
         }
     }
 
@@ -393,7 +403,10 @@ mod tests {
         }
         // Row x0 should have: negative diagonal, positive entry at x1, zero elsewhere.
         assert!(r[[x0, x1]] > 0.0, "rate x0->x1 should be positive");
-        assert!((r[[x0, x0]] + r[[x0, x1]]).abs() < 1e-6, "row must sum to 0");
+        assert!(
+            (r[[x0, x0]] + r[[x0, x1]]).abs() < 1e-6,
+            "row must sum to 0"
+        );
     }
 
     // --- Proptest: schedule monotonicity + path validity ---

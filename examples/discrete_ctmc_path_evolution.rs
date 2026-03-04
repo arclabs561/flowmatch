@@ -32,7 +32,10 @@ fn main() {
 
     // --- Part 1: Analytical conditional probability path ---
     println!("--- Analytical p_t(x | x0, x1) ---\n");
-    println!("{:>10}  {:>8} {:>8} {:>8} {:>8}", "t", "p[0]", "p[1]", "p[2]", "p[3]");
+    println!(
+        "{:>10}  {:>8} {:>8} {:>8} {:>8}",
+        "t", "p[0]", "p[1]", "p[2]", "p[3]"
+    );
     println!("{:-<10}  {:-<8} {:-<8} {:-<8} {:-<8}", "", "", "", "", "");
 
     for &(name, sched) in &schedules {
@@ -53,7 +56,11 @@ fn main() {
         let kd = sched.kappa_dot(0.3);
         let kv = sched.kappa(0.3);
         println!("  {name}: kappa(0.3)={kv:.4}, kappa'(0.3)={kd:.4}");
-        println!("  Rate x0->x1 = {:.4}, diagonal = {:.4}\n", r[[x0, x1]], r[[x0, x0]]);
+        println!(
+            "  Rate x0->x1 = {:.4}, diagonal = {:.4}\n",
+            r[[x0, x1]],
+            r[[x0, x0]]
+        );
     }
 
     // --- Part 3: Forward Euler integration vs analytical path ---
@@ -66,7 +73,10 @@ fn main() {
     let mut p_euler = ndarray::Array1::zeros(k);
     p_euler[x0] = 1.0;
 
-    println!("{:>6}  {:>24}  {:>24}  {:>8}", "t", "Euler p[x0], p[x1]", "Exact p[x0], p[x1]", "L1 err");
+    println!(
+        "{:>6}  {:>24}  {:>24}  {:>8}",
+        "t", "Euler p[x0], p[x1]", "Exact p[x0], p[x1]", "L1 err"
+    );
     println!("{:-<6}  {:-<24}  {:-<24}  {:-<8}", "", "", "", "");
 
     let checkpoints = [0, 100, 250, 500, 750, 900, 999];
@@ -94,7 +104,10 @@ fn main() {
 
     // --- Part 4: Schedule comparison (kappa and kappa') ---
     println!("\n\n--- Schedule profiles: kappa(t) and kappa'(t) ---\n");
-    println!("{:>6}  {:>18}  {:>18}  {:>18}", "t", "Linear", "CosineSq", "CosineHalf");
+    println!(
+        "{:>6}  {:>18}  {:>18}  {:>18}",
+        "t", "Linear", "CosineSq", "CosineHalf"
+    );
     println!("{:-<6}  {:-<18}  {:-<18}  {:-<18}", "", "", "", "");
 
     for i in 0..=10 {

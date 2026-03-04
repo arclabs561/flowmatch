@@ -108,9 +108,7 @@ pub fn parse_phi_psi_csv_2col(min_pairs: usize) -> flowmatch::Result<Vec<(f32, f
         }
     }
     if phi_psi.len() < min_pairs {
-        return Err(flowmatch::Error::Domain(
-            "not enough torsion points parsed",
-        ));
+        return Err(flowmatch::Error::Domain("not enough torsion points parsed"));
     }
     Ok(phi_psi)
 }
