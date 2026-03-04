@@ -30,12 +30,14 @@ pub struct LinearCondField {
 }
 
 impl LinearCondField {
+    /// Create a zero-initialized field for dimension `d`.
     pub fn new_zeros(d: usize) -> Self {
         Self {
             w: Array2::zeros((d, 2 * d + 2)),
         }
     }
 
+    /// Output dimension of the field.
     pub fn d(&self) -> usize {
         self.w.nrows()
     }

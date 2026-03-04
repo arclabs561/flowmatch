@@ -1,4 +1,4 @@
-//! RFM minibatch-OT demo on “text-ish tokens”.
+//! RFM minibatch-OT demo on "text-ish tokens".
 //!
 //! This is meant to be less toy than random vectors:
 //! - build token embeddings (char n-grams)
@@ -13,139 +13,7 @@ use flowmatch::sd_fm::{
 };
 use ndarray::{Array1, Array2};
 
-mod textish {
-    use ndarray::Array1;
-    use std::collections::BTreeMap;
-
-    pub fn normalize_token(tok: &str) -> String {
-        let mut out = String::new();
-        for c in tok.chars() {
-            if c.is_alphanumeric() {
-                out.extend(c.to_lowercase());
-            }
-        }
-        out
-    }
-
-    fn base_weight(tok: &str) -> f32 {
-        if tok.is_empty() {
-            return 0.0;
-        }
-        if tok.len() <= 3 {
-            return 0.05;
-        }
-        if matches!(
-            tok,
-            "subscribe"
-                | "newsletter"
-                | "cookies"
-                | "cookie"
-                | "privacy"
-                | "policy"
-                | "terms"
-                | "menu"
-                | "home"
-                | "contact"
-                | "share"
-                | "twitter"
-                | "confidential"
-                | "internal"
-        ) {
-            return 0.05;
-        }
-        1.0
-    }
-
-    pub fn bag_of_tokens(tokens: &[String]) -> Vec<(String, usize)> {
-        let mut counts: BTreeMap<String, usize> = BTreeMap::new();
-        for t in tokens {
-            if t.is_empty() || t.len() < 2 {
-                continue;
-            }
-            *counts.entry(t.clone()).or_insert(0) += 1;
-        }
-        counts.into_iter().collect()
-    }
-
-    pub fn weights_tfidf_2docs(
-        a: &[(String, usize)],
-        b: &[(String, usize)],
-    ) -> (Array1<f32>, Array1<f32>) {
-        let mut df: BTreeMap<&str, usize> = BTreeMap::new();
-        for (t, _) in a {
-            *df.entry(t.as_str()).or_insert(0) += 1;
-        }
-        for (t, _) in b {
-            *df.entry(t.as_str()).or_insert(0) += 1;
-        }
-
-        fn idf(df: usize) -> f32 {
-            let n = 2.0f32;
-            ((1.0 + n) / (1.0 + df as f32)).ln() + 1.0
-        }
-
-        let mut w_a = Array1::<f32>::zeros(a.len());
-        for (i, (t, c)) in a.iter().enumerate() {
-            let df_t = *df.get(t.as_str()).unwrap_or(&1);
-            w_a[i] = base_weight(t) * (*c as f32) * idf(df_t);
-        }
-        let mut w_b = Array1::<f32>::zeros(b.len());
-        for (i, (t, c)) in b.iter().enumerate() {
-            let df_t = *df.get(t.as_str()).unwrap_or(&1);
-            w_b[i] = base_weight(t) * (*c as f32) * idf(df_t);
-        }
-        let sa = w_a.sum();
-        if sa > 0.0 {
-            w_a /= sa;
-        }
-        let sb = w_b.sum();
-        if sb > 0.0 {
-            w_b /= sb;
-        }
-        (w_a, w_b)
-    }
-
-    pub fn embed_char_ngrams_signed(text: &str, dim: usize) -> Array1<f32> {
-        let mut v = Array1::<f32>::zeros(dim);
-        if dim == 0 {
-            return v;
-        }
-
-        const BOS: u32 = 0x110000;
-        const EOS: u32 = 0x110001;
-        let mut xs: Vec<u32> = Vec::with_capacity(text.chars().count() + 2);
-        xs.push(BOS);
-        xs.extend(text.chars().map(|c| c as u32));
-        xs.push(EOS);
-
-        fn fnv1a_u32(seq: &[u32]) -> u64 {
-            let mut h: u64 = 0xcbf29ce484222325;
-            for &x in seq {
-                h ^= x as u64;
-                h = h.wrapping_mul(0x100000001b3);
-            }
-            h
-        }
-
-        for n in [3usize, 2, 1] {
-            if xs.len() < n {
-                continue;
-            }
-            for i in 0..=xs.len() - n {
-                let h = fnv1a_u32(&xs[i..i + n]);
-                let idx = (h as usize) % dim;
-                let sign = if (h >> 63) == 0 { 1.0 } else { -1.0 };
-                v[idx] += sign;
-            }
-        }
-
-        let norm = v.dot(&v).sqrt();
-        if norm > 0.0 {
-            v /= norm;
-        }
-        v
-    }
-}
+mod common;
 
 fn topk_indices(w: &Array1<f32>, k: usize) -> Vec<usize> {
     let mut v: Vec<(usize, f32)> = w.iter().copied().enumerate().collect();
@@ -168,19 +36,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let toks_a_raw: Vec<String> = doc_a
         .split_whitespace()
-        .map(textish::normalize_token)
+        .map(common::textish::normalize_token)
         .filter(|t| !t.is_empty())
         .collect();
     let toks_b_raw: Vec<String> = doc_b
         .split_whitespace()
-        .map(textish::normalize_token)
+        .map(common::textish::normalize_token)
         .filter(|t| !t.is_empty())
         .collect();
 
-    let bow_a = textish::bag_of_tokens(&toks_a_raw);
-    let bow_b = textish::bag_of_tokens(&toks_b_raw);
+    let bow_a = common::textish::bag_of_tokens(&toks_a_raw);
+    let bow_b = common::textish::bag_of_tokens(&toks_b_raw);
     let toks_b: Vec<String> = bow_b.iter().map(|(t, _)| t.clone()).collect();
-    let (_w_a, w_b) = textish::weights_tfidf_2docs(&bow_a, &bow_b);
+    let (_w_a, w_b) = common::textish::weights_tfidf_2docs(&bow_a, &bow_b);
 
     let dim = 64usize;
     let n = toks_b.len();
@@ -188,7 +56,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut y = Array2::<f32>::zeros((n, d));
     for (j, tok) in toks_b.iter().enumerate() {
-        let v = textish::embed_char_ngrams_signed(tok, dim);
+        let v = common::textish::embed_char_ngrams_signed(tok, dim);
         for k in 0..d {
             y[[j, k]] = v[k];
         }
@@ -233,7 +101,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "rfm:   reg={} max_iter={} tol={}",
         rfm_cfg.reg, rfm_cfg.max_iter, rfm_cfg.tol
     );
-    println!("eval:  OT_cost(xs → (y,b)) = {ot_cost:.4}");
+    println!("eval:  OT_cost(xs -> (y,b)) = {ot_cost:.4}");
     println!();
 
     let top = topk_indices(&trained.b, 8.min(n));

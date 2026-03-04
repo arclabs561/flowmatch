@@ -32,10 +32,12 @@ fn main() {
 
     let euler = integrate_fixed_manifold(OdeMethod::Euler, &m, &x0, 0.0, dt, steps, |x, _t| {
         m.parallel_transport(&x0.view(), x, &v0.view())
-    });
+    })
+    .unwrap();
     let heun = integrate_fixed_manifold(OdeMethod::Heun, &m, &x0, 0.0, dt, steps, |x, _t| {
         m.parallel_transport(&x0.view(), x, &v0.view())
-    });
+    })
+    .unwrap();
 
     let err_e = (&euler - &exact).dot(&(&euler - &exact)).sqrt();
     let err_h = (&heun - &exact).dot(&(&heun - &exact)).sqrt();

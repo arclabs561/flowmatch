@@ -33,8 +33,8 @@ fn main() {
     for &steps in &step_counts {
         let dt = total_t / (steps as f32);
 
-        let euler = integrate_fixed(OdeMethod::Euler, &x0, 0.0, dt, steps, velocity);
-        let heun = integrate_fixed(OdeMethod::Heun, &x0, 0.0, dt, steps, velocity);
+        let euler = integrate_fixed(OdeMethod::Euler, &x0, 0.0, dt, steps, velocity).unwrap();
+        let heun = integrate_fixed(OdeMethod::Heun, &x0, 0.0, dt, steps, velocity).unwrap();
 
         let r_euler = (euler[0] * euler[0] + euler[1] * euler[1]).sqrt();
         let r_heun = (heun[0] * heun[0] + heun[1] * heun[1]).sqrt();

@@ -32,11 +32,17 @@ use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use rand_distr::{Distribution, StandardNormal};
+
+/// Epsilon for clamping logit-normal samples away from 0 and 1 to avoid singularities.
+const LOGIT_NORMAL_CLAMP_EPS: f32 = 1e-5;
 use wass::semidiscrete::{
     assign_hard_from_scores, fit_potentials_sgd_neg_dot, scores_neg_dot, SemidiscreteSgdConfig,
 };
 
-fn sample_categorical_from_probs(probs: &ArrayView1<f32>, rng: &mut impl rand::Rng) -> usize {
+pub(crate) fn sample_categorical_from_probs(
+    probs: &ArrayView1<f32>,
+    rng: &mut impl rand::Rng,
+) -> usize {
     debug_assert!(!probs.is_empty());
     debug_assert!(probs.iter().all(|&x| x >= 0.0 && x.is_finite()));
     // Note: even if `probs.sum()` is very close to 1, float roundoff can leave the cumulative
@@ -83,6 +89,7 @@ pub enum TimestepSchedule {
 }
 
 impl TimestepSchedule {
+    /// Draw a random timestep in `[0, 1]` according to this schedule.
     #[inline]
     pub fn sample_t(self, rng: &mut impl rand::Rng) -> f32 {
         match self {
@@ -98,7 +105,7 @@ impl TimestepSchedule {
                 // sigmoid(u) = 1 / (1 + exp(-u))
                 let t = 1.0 / (1.0 + (-u).exp());
                 // Clamp away from exact 0/1 to avoid singularities.
-                t.clamp(1e-5, 1.0 - 1e-5)
+                t.clamp(LOGIT_NORMAL_CLAMP_EPS, 1.0 - LOGIT_NORMAL_CLAMP_EPS)
             }
         }
     }
@@ -221,7 +228,9 @@ pub struct TrainedSdFm {
 /// - `CategoricalFromB`: sample `j ~ b` directly (useful as a baseline / ablation).
 #[derive(Debug, Clone, Copy)]
 pub enum SdFmTrainAssignment {
+    /// Use semidiscrete OT potentials for hard assignment.
     SemidiscretePotentials,
+    /// Sample target index from the codebook distribution `b`.
     CategoricalFromB,
 }
 
@@ -282,7 +291,7 @@ impl TrainedSdFm {
             // ODE integration
             let x1 = integrate_fixed(method, &x, 0.0, dt, steps, |xt, t| {
                 self.field.eval(xt, t, &yj)
-            });
+            })?;
             x = x1;
 
             for k in 0..d {

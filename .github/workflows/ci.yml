@@ -23,3 +23,9 @@ jobs:
 
       - name: test
         run: cargo test --all-targets
+
+      - name: test (sheaf-evals)
+        run: cargo test --all-targets --features sheaf-evals
+
+      - name: check (burn)
+        run: cargo check --all-targets --features burn

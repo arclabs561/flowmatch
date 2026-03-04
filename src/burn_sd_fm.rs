@@ -24,11 +24,15 @@ use wass::semidiscrete::{
 };
 
 use crate::linear::LinearCondField;
-use crate::sd_fm::{SdFmTrainAssignment, SdFmTrainConfig, TrainedSdFm};
+use crate::sd_fm::{
+    sample_categorical_from_probs, SdFmTrainAssignment, SdFmTrainConfig, TrainedSdFm,
+};
 use crate::{Error, Result};
 
 /// Default burn backend for these training loops: ndarray + autodiff.
-pub type BurnBackend = Autodiff<NdArray<f32>>;
+///
+/// Re-exported from `burn_euclidean` for convenience.
+pub type BurnBackend = crate::burn_euclidean::BurnBackend;
 
 #[derive(Module, Debug)]
 struct BurnLinearCondField<B: Backend> {
@@ -83,19 +87,6 @@ impl<B: Backend> BurnLinearCondField<B> {
 
         LinearCondField { w }
     }
-}
-
-fn sample_categorical_from_probs(probs: &ArrayView1<f32>, rng: &mut impl rand::Rng) -> usize {
-    debug_assert!(probs.len() > 0);
-    let u: f32 = rng.random();
-    let mut acc = 0.0f32;
-    for idx in 0..probs.len() {
-        acc += probs[idx];
-        if u < acc {
-            return idx;
-        }
-    }
-    probs.len() - 1
 }
 
 fn ndarray_to_burn_2<B: Backend>(device: &B::Device, x: &Array2<f32>) -> Tensor<B, 2> {

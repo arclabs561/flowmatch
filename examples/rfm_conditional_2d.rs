@@ -94,7 +94,8 @@ fn generate_samples(field: &LinearCondField, center: [f32; 2], n: usize, seed: u
         ]);
         let x1 = integrate_fixed(OdeMethod::Euler, &x0, 0.0, dt, SAMPLE_STEPS, |xt, t| {
             field.eval(xt, t, &y.view())
-        });
+        })
+        .unwrap();
         out[[i, 0]] = x1[0];
         out[[i, 1]] = x1[1];
     }

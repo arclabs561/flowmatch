@@ -9,6 +9,9 @@
 use crate::{Error, Result};
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 
+/// Threshold below which a Sinkhorn plan is considered degenerate (all-zero).
+const DEGENERATE_PLAN_TOL: f32 = 1e-8;
+
 #[inline]
 fn l2_squared(a: &ArrayView1<'_, f32>, b: &ArrayView1<'_, f32>) -> f32 {
     debug_assert_eq!(a.len(), b.len());
@@ -163,7 +166,7 @@ pub fn minibatch_ot_greedy_pairing(
     // Fallback: if Sinkhorn returned a degenerate plan (near-zero sum, which can happen
     // with extreme cost values), fall back to a uniform plan rather than hard-erroring.
     // This matches torchcfm's behavior.
-    let plan = if plan.sum().abs() < 1e-8 {
+    let plan = if plan.sum().abs() < DEGENERATE_PLAN_TOL {
         Array2::<f32>::from_elem((n, n), 1.0 / (n * n) as f32)
     } else {
         plan
@@ -221,7 +224,7 @@ pub fn minibatch_ot_greedy_pairing_normalized(
         wass::sinkhorn_log_with_convergence(&a, &b, &cost, reg, max_iter, tol)
             .map_err(|_| Error::Domain("sinkhorn coupling did not converge"))?;
 
-    let plan = if plan.sum().abs() < 1e-8 {
+    let plan = if plan.sum().abs() < DEGENERATE_PLAN_TOL {
         Array2::<f32>::from_elem((n, n), 1.0 / (n * n) as f32)
     } else {
         plan
@@ -282,7 +285,7 @@ pub fn minibatch_ot_selective_pairing(
             .map_err(|_| Error::Domain("sinkhorn coupling did not converge"))?;
 
     // Fallback to uniform plan if Sinkhorn produced a degenerate result.
-    let plan = if plan.sum().abs() < 1e-8 {
+    let plan = if plan.sum().abs() < DEGENERATE_PLAN_TOL {
         Array2::<f32>::from_elem((n, n), 1.0 / (n * n) as f32)
     } else {
         plan

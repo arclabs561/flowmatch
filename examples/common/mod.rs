@@ -4,9 +4,31 @@
 //! torsion examples. It is not part of the public API.
 
 #[allow(dead_code)]
+pub mod textish;
+#[allow(dead_code)]
 pub mod torsions;
 #[allow(dead_code)]
 pub mod usgs;
+
+#[allow(dead_code)]
+/// Mean squared distance from each sample to its assigned target.
+pub fn mean_sq_to_assigned_y(
+    xs: &ndarray::Array2<f32>,
+    js: &[usize],
+    y: &ndarray::Array2<f32>,
+) -> f32 {
+    let n = xs.nrows();
+    let d = xs.ncols();
+    let mut s: f64 = 0.0;
+    for i in 0..n {
+        let j = js[i];
+        for k in 0..d {
+            let r = (xs[[i, k]] - y[[j, k]]) as f64;
+            s += r * r;
+        }
+    }
+    (s / (n as f64 * d as f64)) as f32
+}
 
 #[allow(dead_code)]
 /// Mean and (population) standard deviation of a slice.

@@ -10,19 +10,7 @@ use flowmatch::sd_fm::{
 };
 use ndarray::{Array1, Array2};
 
-fn mean_sq_to_assigned_y(xs: &Array2<f32>, js: &[usize], y: &Array2<f32>) -> f32 {
-    let n = xs.nrows();
-    let d = xs.ncols();
-    let mut s: f64 = 0.0;
-    for i in 0..n {
-        let j = js[i];
-        for k in 0..d {
-            let r = (xs[[i, k]] - y[[j, k]]) as f64;
-            s += r * r;
-        }
-    }
-    (s / (n as f64 * d as f64)) as f32
-}
+mod common;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let n = 16usize;
@@ -60,7 +48,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let n_samp = 64usize;
     let (xs, js) = trained.sample(n_samp, 123, fm_cfg.sample_steps)?;
-    let mse = mean_sq_to_assigned_y(&xs, &js, &trained.y);
+    let mse = common::mean_sq_to_assigned_y(&xs, &js, &trained.y);
 
     println!("n={n} d={d}");
     println!(

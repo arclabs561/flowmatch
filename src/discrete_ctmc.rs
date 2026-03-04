@@ -107,7 +107,7 @@ pub fn conditional_probability_path(
     if x0 >= k || x1 >= k {
         return Err(Error::Domain("x0 and x1 must be < k"));
     }
-    if !t.is_finite() || t < 0.0 || t > 1.0 {
+    if !t.is_finite() || !(0.0..=1.0).contains(&t) {
         return Err(Error::Domain("t must be in [0, 1]"));
     }
     let kap = schedule.kappa(t);
@@ -145,7 +145,7 @@ pub fn conditional_rate_matrix(
     if x0 >= k || x1 >= k {
         return Err(Error::Domain("x0 and x1 must be < k"));
     }
-    if !t.is_finite() || t < 0.0 || t > 1.0 {
+    if !t.is_finite() || !(0.0..=1.0).contains(&t) {
         return Err(Error::Domain("t must be in [0, 1]"));
     }
     if !eps.is_finite() || eps <= 0.0 {
@@ -214,6 +214,7 @@ impl CtmcGenerator {
     }
 }
 
+/// Check that `q` is a valid CTMC rate matrix (non-negative off-diagonals, rows sum to zero).
 pub fn validate_generator(q: &ArrayView2<f32>, tol: f32) -> Result<()> {
     let n = q.nrows();
     if q.ncols() != n {
@@ -417,7 +418,7 @@ mod tests {
         #[test]
         fn prop_cosine_kappa_in_unit_interval(t in 0.0f32..=1.0f32) {
             let k = DiscreteSchedule::CosineSq.kappa(t);
-            prop_assert!(k >= -1e-7 && k <= 1.0 + 1e-7, "kappa({t}) = {k} out of [0,1]");
+            prop_assert!((-1e-7..=1.0 + 1e-7).contains(&k), "kappa({t}) = {k} out of [0,1]");
         }
 
         #[test]

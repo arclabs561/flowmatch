@@ -27,12 +27,16 @@ pub fn integrate_fixed_manifold<M>(
     dt: f64,
     steps: usize,
     mut f: impl FnMut(&ArrayView1<f64>, f64) -> Array1<f64>,
-) -> Array1<f64>
+) -> crate::Result<Array1<f64>>
 where
     M: Manifold,
 {
-    assert!(steps >= 1);
-    assert!(dt.is_finite());
+    if steps < 1 {
+        return Err(crate::Error::Domain("steps must be >= 1"));
+    }
+    if !dt.is_finite() {
+        return Err(crate::Error::Domain("dt must be finite"));
+    }
 
     let mut x = x0.clone();
     let mut t = t0;
@@ -74,7 +78,7 @@ where
         }
     }
 
-    x
+    Ok(x)
 }
 
 #[cfg(all(test, feature = "riemannian"))]
@@ -112,10 +116,12 @@ mod tests {
 
         let euler = integrate_fixed_manifold(OdeMethod::Euler, &m, &x0, 0.0, dt, steps, |x, _t| {
             m.parallel_transport(&x0.view(), x, &v0.view())
-        });
+        })
+        .unwrap();
         let heun = integrate_fixed_manifold(OdeMethod::Heun, &m, &x0, 0.0, dt, steps, |x, _t| {
             m.parallel_transport(&x0.view(), x, &v0.view())
-        });
+        })
+        .unwrap();
 
         let err_e = (&euler - &exact).dot(&(&euler - &exact)).sqrt();
         let err_h = (&heun - &exact).dot(&(&heun - &exact)).sqrt();
@@ -143,17 +149,17 @@ mod tests {
 
             let e1 = integrate_fixed_manifold(OdeMethod::Euler, &m, &x0, 0.0, dt1, steps, |x, _t| {
                 m.parallel_transport(&x0.view(), x, &v0.view())
-            });
+            }).unwrap();
             let e2 = integrate_fixed_manifold(OdeMethod::Euler, &m, &x0, 0.0, dt2, 2 * steps, |x, _t| {
                 m.parallel_transport(&x0.view(), x, &v0.view())
-            });
+            }).unwrap();
 
             let h1 = integrate_fixed_manifold(OdeMethod::Heun, &m, &x0, 0.0, dt1, steps, |x, _t| {
                 m.parallel_transport(&x0.view(), x, &v0.view())
-            });
+            }).unwrap();
             let h2 = integrate_fixed_manifold(OdeMethod::Heun, &m, &x0, 0.0, dt2, 2 * steps, |x, _t| {
                 m.parallel_transport(&x0.view(), x, &v0.view())
-            });
+            }).unwrap();
 
             let err_e1 = (&e1 - &exact).dot(&(&e1 - &exact)).sqrt();
             let err_e2 = (&e2 - &exact).dot(&(&e2 - &exact)).sqrt();

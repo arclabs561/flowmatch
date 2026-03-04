@@ -8,7 +8,7 @@
 //! - Minimal helpers to compute \(x_t = (1-t)x_0 + t x_1\) and \(u_t = x_1 - x_0\).
 //!
 //! Near-term roadmap:
-//! - Replace the “toy” training stub with a real Burn optimizer loop.
+//! - Replace the "toy" training stub with a real Burn optimizer loop.
 //! - Add a `burn`-backed Riemannian FM variant once manifold ops have a tensor backend.
 
 use burn_core as burn;
@@ -75,8 +75,11 @@ pub fn euclidean_path_targets<B: Backend>(
 
 /// Minimal SGD training loop (Burn autodiff backend).
 ///
-/// This is meant as a compile-checked “migration foothold”: it proves we can express a full
+/// This is meant as a compile-checked "migration foothold": it proves we can express a full
 /// FM regression step (targets, loss, autodiff backward, optimizer step) using Burn.
+///
+/// Returns an error if `d == 0`, `hidden == 0`, `steps == 0`, `batch_size == 0`,
+/// or `lr` is not finite and positive.
 pub fn train_euclidean_fm_sgd(
     device: &<BurnBackend as Backend>::Device,
     d: usize,
@@ -84,7 +87,22 @@ pub fn train_euclidean_fm_sgd(
     steps: usize,
     batch_size: usize,
     lr: LearningRate,
-) -> BurnEuclideanCondMlp<BurnBackend> {
+) -> crate::Result<BurnEuclideanCondMlp<BurnBackend>> {
+    if d == 0 {
+        return Err(crate::Error::Domain("d must be > 0"));
+    }
+    if hidden == 0 {
+        return Err(crate::Error::Domain("hidden must be > 0"));
+    }
+    if steps == 0 {
+        return Err(crate::Error::Domain("steps must be > 0"));
+    }
+    if batch_size == 0 {
+        return Err(crate::Error::Domain("batch_size must be > 0"));
+    }
+    if !(lr > 0.0) || !lr.is_finite() {
+        return Err(crate::Error::Domain("lr must be finite and positive"));
+    }
     use burn::tensor::Distribution;
 
     let mut model = BurnEuclideanCondMlp::<BurnBackend>::new(device, d, hidden);
@@ -117,7 +135,7 @@ pub fn train_euclidean_fm_sgd(
         model = optim.step(lr, model, grads);
     }
 
-    model
+    Ok(model)
 }
 
 #[cfg(test)]
@@ -151,6 +169,6 @@ mod tests {
     #[test]
     fn burn_euclidean_train_smoke() {
         let device = <BurnBackend as Backend>::Device::default();
-        let _model = train_euclidean_fm_sgd(&device, 4, 16, 2, 8, 1e-2);
+        let _model = train_euclidean_fm_sgd(&device, 4, 16, 2, 8, 1e-2).unwrap();
     }
 }

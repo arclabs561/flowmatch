@@ -50,7 +50,6 @@ where
     S: Fn(&mut ChaCha8Rng) -> Array1<f32>,
 {
     let n_data = x1_samples.nrows();
-    let _d = x1_samples.ncols();
     if n_data == 0 {
         return Err(Error::Domain("x1_samples must be non-empty"));
     }
