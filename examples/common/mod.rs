@@ -30,6 +30,48 @@ pub fn mean_sq_to_assigned_y(
     (s / (n as f64 * d as f64)) as f32
 }
 
+/// Timing breakdown for profile examples (USGS, torsions).
+///
+/// Each field accumulates wall-clock time for a phase of the training loop.
+#[derive(Default, Debug, Clone)]
+#[allow(dead_code)]
+pub struct Timings {
+    pub sample_x0: std::time::Duration,
+    pub sample_y: std::time::Duration,
+    pub sinkhorn_pair: std::time::Duration,
+    pub fast_pair: std::time::Duration,
+    pub sgd: std::time::Duration,
+}
+
+#[allow(dead_code)]
+impl Timings {
+    /// Print a formatted timing breakdown. `fast_pair` is excluded from the
+    /// accounted total (it is extra profiling work, not part of training).
+    pub fn print(&self) {
+        let total = self.sample_x0 + self.sample_y + self.sinkhorn_pair + self.sgd;
+        let denom = total.as_secs_f64().max(1e-12);
+        for (name, dur) in [
+            ("sample_x0", self.sample_x0),
+            ("sample_y", self.sample_y),
+            ("sinkhorn_pair", self.sinkhorn_pair),
+            ("fast_pair", self.fast_pair),
+            ("sgd", self.sgd),
+        ] {
+            println!(
+                "  - {:>12}: {:>10.3} ms ({:>5.1}%)",
+                name,
+                1e3 * dur.as_secs_f64(),
+                100.0 * dur.as_secs_f64() / denom
+            );
+        }
+    }
+
+    /// Accounted total (excludes `fast_pair`).
+    pub fn accounted_total(&self) -> std::time::Duration {
+        self.sample_x0 + self.sample_y + self.sinkhorn_pair + self.sgd
+    }
+}
+
 #[allow(dead_code)]
 /// Mean and (population) standard deviation of a slice.
 pub fn mean_std(xs: &[f64]) -> (f64, f64) {

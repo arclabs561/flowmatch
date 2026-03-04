@@ -163,30 +163,8 @@ fn main() -> Result<()> {
     for i in 0..xs0.nrows() {
         let v0 = [xs0[[i, 0]], xs0[[i, 1]], xs0[[i, 2]]];
         let v1 = [xs1[[i, 0]], xs1[[i, 1]], xs1[[i, 2]]];
-        let c0 = {
-            let mut best = 0usize;
-            let mut best_score = f32::NEG_INFINITY;
-            for (j, cc) in centers.iter().enumerate() {
-                let s = v0[0] * cc[0] + v0[1] * cc[1] + v0[2] * cc[2];
-                if s > best_score {
-                    best_score = s;
-                    best = j;
-                }
-            }
-            best
-        };
-        let c1 = {
-            let mut best = 0usize;
-            let mut best_score = f32::NEG_INFINITY;
-            for (j, cc) in centers.iter().enumerate() {
-                let s = v1[0] * cc[0] + v1[1] * cc[1] + v1[2] * cc[2];
-                if s > best_score {
-                    best_score = s;
-                    best = j;
-                }
-            }
-            best
-        };
+        let c0 = common::usgs::argmax_dot_unit(v0, &centers);
+        let c1 = common::usgs::argmax_dot_unit(v1, &centers);
         mass0[c0] += 1.0 / (xs0.nrows() as f32);
         mass1[c1] += 1.0 / (xs1.nrows() as f32);
     }

@@ -17,16 +17,9 @@ use rand::Rng;
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use rand_distr::{Distribution, StandardNormal};
-use std::time::{Duration, Instant};
+use std::time::Instant;
 
-#[derive(Default, Debug, Clone)]
-struct Timings {
-    sample_x0: Duration,
-    sample_y: Duration,
-    sinkhorn_pair: Duration,
-    fast_pair: Duration,
-    sgd: Duration,
-}
+use common::Timings;
 
 fn main() -> Result<()> {
     let t0 = Instant::now();
@@ -123,32 +116,15 @@ fn main() -> Result<()> {
     }
 
     let train_time = t_train0.elapsed();
-    let total = timings.sample_x0 + timings.sample_y + timings.sinkhorn_pair + timings.sgd;
-
     println!("Torsions profile breakdown (PDB 1BPI-derived)");
     println!("- n_support={n} d={d} steps={steps} batch_size={batch_size}");
     println!("- load_time: {:?}", load_time);
     println!("- train_time: {:?}", train_time);
     println!(
         "- accounted_total: {:?} (should be close to train_time)",
-        total
+        timings.accounted_total()
     );
-
-    let denom = total.as_secs_f64().max(1e-12);
-    for (name, dur) in [
-        ("sample_x0", timings.sample_x0),
-        ("sample_y", timings.sample_y),
-        ("sinkhorn_pair", timings.sinkhorn_pair),
-        ("fast_pair", timings.fast_pair),
-        ("sgd", timings.sgd),
-    ] {
-        println!(
-            "  - {:>12}: {:>10.3} ms ({:>5.1}%)",
-            name,
-            1e3 * dur.as_secs_f64(),
-            100.0 * dur.as_secs_f64() / denom
-        );
-    }
+    timings.print();
 
     Ok(())
 }
