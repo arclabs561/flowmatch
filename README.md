@@ -128,12 +128,12 @@ Requires `--features sheaf-evals`:
 
 ## Status
 
-Not yet on crates.io (`publish = false`). MSRV: 1.80.
+MSRV: 1.80.
 
 ## Tests
 
 ```bash
-cargo test -p flowmatch                  # 77 tests
+cargo test -p flowmatch                  # 86 tests
 cargo test -p flowmatch --features burn  # + burn backend tests
 ```
 
