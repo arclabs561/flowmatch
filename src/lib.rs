@@ -1,6 +1,6 @@
 //! # flowmatch
 //!
-//! Flow matching as a library primitive (Tekne L5 domain).
+//! Flow matching as a library primitive.
 //!
 //! This crate is intentionally small:
 //!
