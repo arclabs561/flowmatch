@@ -47,6 +47,7 @@ proptest = "1.5"
 criterion = { version = "0.5", features = ["html_reports"] }
 petgraph = "0.6"
 hyperball = "0.1"
+rkhs = "0.1"
 
 [[example]]
 name = "ode_comparison"
@@ -66,6 +67,10 @@ required-features = ["sheaf-evals"]
 name = "rfm_usgs_full_pipeline_report"
 path = "examples/rfm_usgs_full_pipeline_report.rs"
 required-features = ["sheaf-evals"]
+
+[[example]]
+name = "mmd_flow_eval"
+path = "examples/mmd_flow_eval.rs"
 
 [[bench]]
 name = "realdata_torsions"
