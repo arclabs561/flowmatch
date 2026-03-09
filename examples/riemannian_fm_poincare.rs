@@ -144,6 +144,10 @@ fn main() {
             // dL/dout = pred - target (gradient of 0.5 * ||pred - target||^2)
             let d_out = &out - target;
 
+            // -- Backprop through layer 2 (before updating w2) --
+            // dL/dh = W2^T * d_out  (hidden)
+            let d_h = self.w2.t().dot(&d_out);
+
             // -- Layer 2 gradients --
             // dL/dW2 = d_out (dim) outer h (hidden) -> (dim x hidden)
             // dL/db2 = d_out
@@ -153,10 +157,6 @@ fn main() {
                 }
                 self.b2[i] -= lr * d_out[i];
             }
-
-            // -- Backprop through layer 2 --
-            // dL/dh = W2^T * d_out  (hidden)
-            let d_h = self.w2.t().dot(&d_out);
 
             // -- tanh derivative: dL/dpre = dL/dh * (1 - tanh^2(pre)) = dL/dh * (1 - h^2) --
             let d_pre = &d_h * &(1.0 - &h * &h);
