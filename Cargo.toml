@@ -69,6 +69,11 @@ path = "examples/rfm_usgs_full_pipeline_report.rs"
 required-features = ["sheaf-evals"]
 
 [[example]]
+name = "riemannian_fm_poincare"
+path = "examples/riemannian_fm_poincare.rs"
+required-features = ["riemannian"]
+
+[[example]]
 name = "mmd_flow_eval"
 path = "examples/mmd_flow_eval.rs"
 
