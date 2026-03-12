@@ -33,9 +33,9 @@ rand = "0.9"
 rand_chacha = "0.9"
 rand_distr = "0.5"
 logp = "0.1.3"
-wass = "0.1.2"
+wass = "0.1.4"
 skel = "0.1"
-sheaf = { version = "0.1.0", default-features = false, features = ["cluster", "community", "knn-graph", "metrics", "wass"], optional = true }
+sheaf = { version = "0.1.2", default-features = false, features = ["cluster", "community", "knn-graph", "metrics", "wass"], optional = true }
 burn-core = { version = "0.20.0", default-features = false, features = ["std"], optional = true }
 burn-autodiff = { version = "0.20.0", default-features = false, features = ["std"], optional = true }
 burn-ndarray = { version = "0.20.0", default-features = true, optional = true }
