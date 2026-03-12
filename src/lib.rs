@@ -1,3 +1,4 @@
+#![warn(missing_docs)]
 //! # flowmatch
 //!
 //! Flow matching as a library primitive.
