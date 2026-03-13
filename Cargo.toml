@@ -1,6 +1,6 @@
 [package]
 name = "flowmatch"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 rust-version = "1.80"
 license = "MIT OR Apache-2.0"
@@ -32,7 +32,7 @@ ndarray = "0.16"
 rand = "0.9"
 rand_chacha = "0.9"
 rand_distr = "0.5"
-logp = "0.1.3"
+logp = "0.1.4"
 wass = "0.1.4"
 skel = { version = "0.1", optional = true }
 sheaf = { version = "0.1.4", default-features = false, features = ["cluster", "community", "knn-graph", "metrics", "wass"], optional = true }
