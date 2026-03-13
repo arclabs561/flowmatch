@@ -18,9 +18,9 @@ use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 
 /// A linear vector field that is conditioned on a discrete target point `y`:
 ///
-/// \[
+/// $$
 /// v_\theta(x, t; y) = W \cdot [x; y; t; 1],
-/// \]
+/// $$
 ///
 /// where `W` is a `d × (2d+2)` matrix.
 #[derive(Debug, Clone)]
@@ -76,9 +76,9 @@ impl LinearCondField {
 
     /// One SGD step on mean-squared error:
     ///
-    /// \[
-    /// L = \tfrac12 \|v_\theta(x,t;y) - u\|_2^2.
-    /// \]
+    /// $$
+    /// L = \tfrac{1}{2} \|v_\theta(x,t;y) - u\|_2^2.
+    /// $$
     pub fn sgd_step(
         &mut self,
         x: &ArrayView1<f32>,

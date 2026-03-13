@@ -178,7 +178,7 @@ pub enum RfmMinibatchPairing {
     /// For the remaining rows, we fall back to per-row nearest neighbor (allowing duplicates),
     /// which avoids forcing a match to a rare/outlier target within a minibatch.
     ///
-    /// `keep_frac` is the fraction of rows to match one-to-one (clamped to \((0,1]\)).
+    /// `keep_frac` is the fraction of rows to match one-to-one (clamped to `(0, 1]`).
     PartialRowwise {
         /// Fraction of rows to match one-to-one (clamped to `(0, 1]`).
         keep_frac: f32,
