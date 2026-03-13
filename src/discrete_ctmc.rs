@@ -179,12 +179,12 @@ pub fn conditional_rate_matrix(
 // CTMC generator (time-homogeneous, for generic use)
 // ---------------------------------------------------------------------------
 
-/// A time-homogeneous CTMC generator matrix \(Q\).
+/// A time-homogeneous CTMC generator matrix `Q`.
 ///
 /// Convention: row-stochastic evolution on the left:
-/// \[
+/// $$
 /// \frac{dp}{dt} = p Q,
-/// \]
+/// $$
 /// where `p` is a row vector (probabilities over states).
 #[derive(Debug, Clone)]
 pub struct CtmcGenerator {
