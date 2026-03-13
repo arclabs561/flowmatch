@@ -570,6 +570,68 @@ pub fn minibatch_exp_greedy_pairing(
     Ok(perm)
 }
 
+/// Apply the selected pairing strategy to a minibatch of source and target points.
+///
+/// Validates variant-specific config fields, then dispatches to the appropriate pairing
+/// function.  Both the ndarray and Burn training loops delegate here.
+pub fn apply_pairing(
+    pairing: &crate::sd_fm::RfmMinibatchPairing,
+    x0s: &ArrayView2<f32>,
+    ys: &ArrayView2<f32>,
+    cfg: &crate::sd_fm::RfmMinibatchOtConfig,
+) -> Result<Vec<usize>> {
+    use crate::sd_fm::RfmMinibatchPairing;
+
+    match *pairing {
+        RfmMinibatchPairing::SinkhornGreedy => {
+            validate_sinkhorn_fields(cfg)?;
+            minibatch_ot_greedy_pairing(x0s, ys, cfg.reg, cfg.max_iter, cfg.tol)
+        }
+        RfmMinibatchPairing::SinkhornGreedyNormalized => {
+            validate_sinkhorn_fields(cfg)?;
+            minibatch_ot_greedy_pairing_normalized(x0s, ys, cfg.reg, cfg.max_iter, cfg.tol)
+        }
+        RfmMinibatchPairing::SinkhornSelective { keep_frac } => {
+            validate_sinkhorn_fields(cfg)?;
+            if !keep_frac.is_finite() || keep_frac <= 0.0 {
+                return Err(Error::Domain(
+                    "rfm_cfg.keep_frac must be positive and finite",
+                ));
+            }
+            minibatch_ot_selective_pairing(x0s, ys, cfg.reg, cfg.max_iter, cfg.tol, keep_frac)
+        }
+        RfmMinibatchPairing::RowwiseNearest => minibatch_rowwise_nearest_pairing(x0s, ys),
+        RfmMinibatchPairing::ExpGreedy { temp } => {
+            if !temp.is_finite() || temp <= 0.0 {
+                return Err(Error::Domain("rfm_cfg.temp must be positive and finite"));
+            }
+            minibatch_exp_greedy_pairing(x0s, ys, temp)
+        }
+        RfmMinibatchPairing::PartialRowwise { keep_frac } => {
+            if !keep_frac.is_finite() || keep_frac <= 0.0 {
+                return Err(Error::Domain(
+                    "rfm_cfg.keep_frac must be positive and finite",
+                ));
+            }
+            minibatch_partial_rowwise_pairing(x0s, ys, keep_frac)
+        }
+    }
+}
+
+/// Validate Sinkhorn-specific fields in `RfmMinibatchOtConfig`.
+fn validate_sinkhorn_fields(cfg: &crate::sd_fm::RfmMinibatchOtConfig) -> Result<()> {
+    if !cfg.reg.is_finite() || cfg.reg <= 0.0 {
+        return Err(Error::Domain("rfm_cfg.reg must be positive and finite"));
+    }
+    if cfg.max_iter == 0 {
+        return Err(Error::Domain("rfm_cfg.max_iter must be >= 1"));
+    }
+    if !cfg.tol.is_finite() || cfg.tol <= 0.0 {
+        return Err(Error::Domain("rfm_cfg.tol must be positive and finite"));
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -57,24 +57,28 @@ pub enum DiscreteSchedule {
 
 impl DiscreteSchedule {
     /// Evaluate the schedule: `kappa(t)`.
-    pub fn kappa(&self, t: f32) -> f32 {
-        debug_assert!((0.0..=1.0).contains(&t), "t must be in [0, 1], got {t}");
-        match self {
+    pub fn kappa(&self, t: f32) -> crate::Result<f32> {
+        if !(0.0..=1.0).contains(&t) {
+            return Err(crate::Error::Domain("t must be in [0, 1]"));
+        }
+        Ok(match self {
             Self::Linear => t,
             Self::CosineSq => {
                 let s = (std::f32::consts::FRAC_PI_2 * t).sin();
                 s * s
             }
             Self::CosineHalf => 1.0 - (std::f32::consts::FRAC_PI_2 * t).cos(),
-        }
+        })
     }
 
     /// Derivative of the schedule: `kappa'(t)`.
     ///
     /// Used for the probability velocity / conditional rate matrix.
-    pub fn kappa_dot(&self, t: f32) -> f32 {
-        debug_assert!((0.0..=1.0).contains(&t), "t must be in [0, 1], got {t}");
-        match self {
+    pub fn kappa_dot(&self, t: f32) -> crate::Result<f32> {
+        if !(0.0..=1.0).contains(&t) {
+            return Err(crate::Error::Domain("t must be in [0, 1]"));
+        }
+        Ok(match self {
             Self::Linear => 1.0,
             // d/dt sin^2(pi*t/2) = (pi/2) * sin(pi*t)
             Self::CosineSq => std::f32::consts::FRAC_PI_2 * (std::f32::consts::PI * t).sin(),
@@ -82,7 +86,7 @@ impl DiscreteSchedule {
             Self::CosineHalf => {
                 std::f32::consts::FRAC_PI_2 * (std::f32::consts::FRAC_PI_2 * t).sin()
             }
-        }
+        })
     }
 }
 
@@ -110,7 +114,7 @@ pub fn conditional_probability_path(
     if !t.is_finite() || !(0.0..=1.0).contains(&t) {
         return Err(Error::Domain("t must be in [0, 1]"));
     }
-    let kap = schedule.kappa(t);
+    let kap = schedule.kappa(t)?;
     let mut p = Array1::zeros(k);
     p[x0] += 1.0 - kap;
     p[x1] += kap;
@@ -159,8 +163,8 @@ pub fn conditional_rate_matrix(
         return Ok(r);
     }
 
-    let kap = schedule.kappa(t);
-    let kap_dot = schedule.kappa_dot(t);
+    let kap = schedule.kappa(t)?;
+    let kap_dot = schedule.kappa_dot(t)?;
     let denom = (1.0 - kap).max(eps);
     let rate = kap_dot / denom;
 
@@ -184,6 +188,7 @@ pub fn conditional_rate_matrix(
 /// where `p` is a row vector (probabilities over states).
 #[derive(Debug, Clone)]
 pub struct CtmcGenerator {
+    /// The rate matrix `Q` with shape `(k, k)`.
     pub q: Array2<f32>,
 }
 
@@ -274,16 +279,19 @@ mod tests {
     #[test]
     fn cosine_schedule_boundary_values() {
         let s = DiscreteSchedule::CosineSq;
-        assert!((s.kappa(0.0)).abs() < 1e-7, "kappa(0) should be 0");
-        assert!((s.kappa(1.0) - 1.0).abs() < 1e-6, "kappa(1) should be 1");
+        assert!((s.kappa(0.0).unwrap()).abs() < 1e-7, "kappa(0) should be 0");
+        assert!(
+            (s.kappa(1.0).unwrap() - 1.0).abs() < 1e-6,
+            "kappa(1) should be 1"
+        );
     }
 
     #[test]
     fn linear_schedule_boundary_values() {
         let s = DiscreteSchedule::Linear;
-        assert_eq!(s.kappa(0.0), 0.0);
-        assert_eq!(s.kappa(1.0), 1.0);
-        assert_eq!(s.kappa(0.5), 0.5);
+        assert_eq!(s.kappa(0.0).unwrap(), 0.0);
+        assert_eq!(s.kappa(1.0).unwrap(), 1.0);
+        assert_eq!(s.kappa(0.5).unwrap(), 0.5);
     }
 
     #[test]
@@ -293,7 +301,7 @@ mod tests {
         let mut prev = 0.0f32;
         for i in 0..=steps {
             let t = i as f32 / steps as f32;
-            let k = s.kappa(t);
+            let k = s.kappa(t).unwrap();
             assert!(
                 k >= prev - 1e-7,
                 "kappa not monotone at t={t}: {prev} -> {k}"
@@ -308,7 +316,7 @@ mod tests {
         let steps = 100;
         for i in 0..=steps {
             let t = i as f32 / steps as f32;
-            let kd = s.kappa_dot(t);
+            let kd = s.kappa_dot(t).unwrap();
             assert!(kd >= -1e-6, "kappa_dot negative at t={t}: {kd}");
         }
     }
@@ -316,15 +324,18 @@ mod tests {
     #[test]
     fn cosine_half_schedule_boundary_values() {
         let s = DiscreteSchedule::CosineHalf;
-        assert!((s.kappa(0.0)).abs() < 1e-7, "kappa(0) should be 0");
-        assert!((s.kappa(1.0) - 1.0).abs() < 1e-6, "kappa(1) should be 1");
+        assert!((s.kappa(0.0).unwrap()).abs() < 1e-7, "kappa(0) should be 0");
+        assert!(
+            (s.kappa(1.0).unwrap() - 1.0).abs() < 1e-6,
+            "kappa(1) should be 1"
+        );
     }
 
     #[test]
     fn cosine_sq_and_half_differ_at_midpoint() {
         // sin^2(pi/4) = 0.5, but 1 - cos(pi/4) ~= 0.293
-        let sq = DiscreteSchedule::CosineSq.kappa(0.5);
-        let half = DiscreteSchedule::CosineHalf.kappa(0.5);
+        let sq = DiscreteSchedule::CosineSq.kappa(0.5).unwrap();
+        let half = DiscreteSchedule::CosineHalf.kappa(0.5).unwrap();
         assert!(
             (sq - 0.5).abs() < 1e-6,
             "CosineSq(0.5) should be 0.5, got {sq}"
@@ -417,7 +428,7 @@ mod tests {
 
         #[test]
         fn prop_cosine_kappa_in_unit_interval(t in 0.0f32..=1.0f32) {
-            let k = DiscreteSchedule::CosineSq.kappa(t);
+            let k = DiscreteSchedule::CosineSq.kappa(t).unwrap();
             prop_assert!((-1e-7..=1.0 + 1e-7).contains(&k), "kappa({t}) = {k} out of [0,1]");
         }
 

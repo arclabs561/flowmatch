@@ -39,7 +39,7 @@ pub fn integrate_fixed(
     t0: f32,
     dt: f32,
     steps: usize,
-    mut f: impl FnMut(&ArrayView1<f32>, f32) -> Array1<f32>,
+    mut f: impl FnMut(&ArrayView1<f32>, f32) -> crate::Result<Array1<f32>>,
 ) -> crate::Result<Array1<f32>> {
     if steps < 1 {
         return Err(crate::Error::Domain("steps must be >= 1"));
@@ -54,7 +54,7 @@ pub fn integrate_fixed(
     match method {
         OdeMethod::Euler => {
             for _ in 0..steps {
-                let v = f(&x.view(), t);
+                let v = f(&x.view(), t)?;
                 // x += dt * v
                 for i in 0..x.len() {
                     x[i] += dt * v[i];
@@ -64,7 +64,7 @@ pub fn integrate_fixed(
         }
         OdeMethod::Heun => {
             for _ in 0..steps {
-                let v0 = f(&x.view(), t);
+                let v0 = f(&x.view(), t)?;
 
                 // predictor
                 let mut x_pred = x.clone();
@@ -73,7 +73,7 @@ pub fn integrate_fixed(
                 }
 
                 // corrector
-                let v1 = f(&x_pred.view(), t + dt);
+                let v1 = f(&x_pred.view(), t + dt)?;
                 for i in 0..x.len() {
                     x[i] += 0.5 * dt * (v0[i] + v1[i]);
                 }
@@ -101,11 +101,11 @@ mod tests {
         let dt = 1.0f32 / (steps as f32);
 
         let euler = integrate_fixed(OdeMethod::Euler, &x0, 0.0, dt, steps, |x, _t| {
-            Array1::from_vec(vec![-x[0]])
+            Ok(Array1::from_vec(vec![-x[0]]))
         })
         .unwrap();
         let heun = integrate_fixed(OdeMethod::Heun, &x0, 0.0, dt, steps, |x, _t| {
-            Array1::from_vec(vec![-x[0]])
+            Ok(Array1::from_vec(vec![-x[0]]))
         })
         .unwrap();
 
@@ -144,8 +144,8 @@ mod tests {
                 out
             };
 
-            let euler = integrate_fixed(OdeMethod::Euler, &x0, t0, dt, steps, |_x, _t| c.clone()).unwrap();
-            let heun = integrate_fixed(OdeMethod::Heun, &x0, t0, dt, steps, |_x, _t| c.clone()).unwrap();
+            let euler = integrate_fixed(OdeMethod::Euler, &x0, t0, dt, steps, |_x, _t| Ok(c.clone())).unwrap();
+            let heun = integrate_fixed(OdeMethod::Heun, &x0, t0, dt, steps, |_x, _t| Ok(c.clone())).unwrap();
 
             for i in 0..len {
                 // Constant fields are "exact" in the method sense, but floating addition accumulates
@@ -175,17 +175,17 @@ mod tests {
             let dt2 = 1.0f32 / ((2 * steps) as f32);
 
             let e1 = integrate_fixed(OdeMethod::Euler, &x0, 0.0, dt1, steps, |x, _t| {
-                Array1::from_vec(vec![-x[0]])
+                Ok(Array1::from_vec(vec![-x[0]]))
             }).unwrap();
             let e2 = integrate_fixed(OdeMethod::Euler, &x0, 0.0, dt2, 2 * steps, |x, _t| {
-                Array1::from_vec(vec![-x[0]])
+                Ok(Array1::from_vec(vec![-x[0]]))
             }).unwrap();
 
             let h1 = integrate_fixed(OdeMethod::Heun, &x0, 0.0, dt1, steps, |x, _t| {
-                Array1::from_vec(vec![-x[0]])
+                Ok(Array1::from_vec(vec![-x[0]]))
             }).unwrap();
             let h2 = integrate_fixed(OdeMethod::Heun, &x0, 0.0, dt2, 2 * steps, |x, _t| {
-                Array1::from_vec(vec![-x[0]])
+                Ok(Array1::from_vec(vec![-x[0]]))
             }).unwrap();
 
             let err_e1 = (e1[0] - exact).abs();
@@ -212,7 +212,7 @@ mod tests {
         let dt = 1.0f32 / (steps as f32);
 
         let result = integrate_fixed(OdeMethod::Euler, &x0, 0.0, dt, steps, |x, _t| {
-            Array1::from_vec(vec![-x[0]])
+            Ok(Array1::from_vec(vec![-x[0]]))
         })
         .unwrap();
 
@@ -235,7 +235,7 @@ mod tests {
         let dt = 1.0f32 / (steps as f32);
 
         let result = integrate_fixed(OdeMethod::Heun, &x0, 0.0, dt, steps, |x, _t| {
-            Array1::from_vec(vec![-x[0]])
+            Ok(Array1::from_vec(vec![-x[0]]))
         })
         .unwrap();
 
@@ -260,11 +260,11 @@ mod tests {
         let dt = total_t / (steps as f32);
 
         let euler = integrate_fixed(OdeMethod::Euler, &x0, 0.0, dt, steps, |x, _t| {
-            Array1::from_vec(vec![-x[1], x[0]])
+            Ok(Array1::from_vec(vec![-x[1], x[0]]))
         })
         .unwrap();
         let heun = integrate_fixed(OdeMethod::Heun, &x0, 0.0, dt, steps, |x, _t| {
-            Array1::from_vec(vec![-x[1], x[0]])
+            Ok(Array1::from_vec(vec![-x[1], x[0]]))
         })
         .unwrap();
 
@@ -293,7 +293,7 @@ mod tests {
         let dt = 0.1f32;
         let result = integrate_fixed(OdeMethod::Euler, &x0, 0.0, dt, 1, |x, _t| {
             // f(x) = [x[1], -x[0]]
-            Array1::from_vec(vec![x[1], -x[0]])
+            Ok(Array1::from_vec(vec![x[1], -x[0]]))
         })
         .unwrap();
         // x1 = [2.0 + 0.1*3.0, 3.0 + 0.1*(-2.0)] = [2.3, 2.8]

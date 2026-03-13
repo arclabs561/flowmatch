@@ -42,7 +42,7 @@ fn integrate_euler_path(
 
     for s in 0..steps {
         let t = (s as f32) * dt;
-        let v = field.eval(&x.view(), t, yj);
+        let v = field.eval(&x.view(), t, yj).unwrap();
         let mut x_next = x.clone();
         for k in 0..x.len() {
             x_next[k] = x[k] + dt * v[k];

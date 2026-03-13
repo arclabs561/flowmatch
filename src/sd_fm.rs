@@ -22,11 +22,6 @@
 
 use crate::linear::LinearCondField;
 use crate::ode::{integrate_fixed, OdeMethod};
-use crate::rfm::{
-    minibatch_exp_greedy_pairing, minibatch_ot_greedy_pairing,
-    minibatch_ot_greedy_pairing_normalized, minibatch_ot_selective_pairing,
-    minibatch_partial_rowwise_pairing, minibatch_rowwise_nearest_pairing,
-};
 use crate::{Error, Result};
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 use rand::SeedableRng;
@@ -85,7 +80,12 @@ pub enum TimestepSchedule {
     /// - larger `std` spreads mass toward the boundaries
     ///
     /// The output is clamped to `[eps, 1-eps]` to avoid exact 0 or 1.
-    LogitNormal { mean: f32, std: f32 },
+    LogitNormal {
+        /// Location parameter of the underlying normal distribution.
+        mean: f32,
+        /// Scale parameter of the underlying normal distribution.
+        std: f32,
+    },
 }
 
 impl TimestepSchedule {
@@ -158,7 +158,10 @@ pub enum RfmMinibatchPairing {
     ///
     /// This avoids "using every column" in the final assignment, mitigating minibatch outlier
     /// forcing while keeping Sinkhorn's global coupling signal.
-    SinkhornSelective { keep_frac: f32 },
+    SinkhornSelective {
+        /// Fraction of rows to enforce one-to-one matching (rest use argmax).
+        keep_frac: f32,
+    },
     /// Faster pairing: greedy row-wise nearest neighbor assignment on the cost matrix.
     ///
     /// This avoids Sinkhorn entirely (and is dramatically faster), but is a weaker coupling.
@@ -166,16 +169,23 @@ pub enum RfmMinibatchPairing {
     /// Faster pairing: convert costs to weights via `exp(-cost / temp)` then greedy matching.
     ///
     /// This is still O(n² log n) due to sorting edges, but avoids Sinkhorn iterations.
-    ExpGreedy { temp: f32 },
+    ExpGreedy {
+        /// Temperature for `exp(-cost / temp)` weight conversion.
+        temp: f32,
+    },
     /// Partial pairing heuristic: only enforce one-to-one matching for the "easy" fraction of rows.
     ///
     /// For the remaining rows, we fall back to per-row nearest neighbor (allowing duplicates),
     /// which avoids forcing a match to a rare/outlier target within a minibatch.
     ///
     /// `keep_frac` is the fraction of rows to match one-to-one (clamped to \((0,1]\)).
-    PartialRowwise { keep_frac: f32 },
+    PartialRowwise {
+        /// Fraction of rows to match one-to-one (clamped to `(0, 1]`).
+        keep_frac: f32,
+    },
 }
 
+/// Configuration for the OT coupling step in minibatch rectified flow matching.
 #[derive(Debug, Clone)]
 pub struct RfmMinibatchOtConfig {
     /// Entropic regularization `ε` for Sinkhorn (larger = easier, smaller = sharper).
@@ -418,7 +428,7 @@ pub fn train_sd_fm_semidiscrete_linear_with_assignment(
                 u[k] = yj[k] - x0[k];
             }
 
-            field.sgd_step(&xt.view(), t, &yj, &u.view(), fm_cfg.lr);
+            field.sgd_step(&xt.view(), t, &yj, &u.view(), fm_cfg.lr)?;
         }
     }
 
@@ -470,49 +480,6 @@ pub fn train_rfm_minibatch_ot_linear(
     if rfm_cfg.pairing_every == 0 {
         return Err(Error::Domain("rfm_cfg.pairing_every must be >= 1"));
     }
-    match rfm_cfg.pairing {
-        RfmMinibatchPairing::SinkhornGreedy | RfmMinibatchPairing::SinkhornGreedyNormalized => {
-            if !rfm_cfg.reg.is_finite() || rfm_cfg.reg <= 0.0 {
-                return Err(Error::Domain("rfm_cfg.reg must be positive and finite"));
-            }
-            if rfm_cfg.max_iter == 0 {
-                return Err(Error::Domain("rfm_cfg.max_iter must be >= 1"));
-            }
-            if !rfm_cfg.tol.is_finite() || rfm_cfg.tol <= 0.0 {
-                return Err(Error::Domain("rfm_cfg.tol must be positive and finite"));
-            }
-        }
-        RfmMinibatchPairing::SinkhornSelective { keep_frac } => {
-            if !rfm_cfg.reg.is_finite() || rfm_cfg.reg <= 0.0 {
-                return Err(Error::Domain("rfm_cfg.reg must be positive and finite"));
-            }
-            if rfm_cfg.max_iter == 0 {
-                return Err(Error::Domain("rfm_cfg.max_iter must be >= 1"));
-            }
-            if !rfm_cfg.tol.is_finite() || rfm_cfg.tol <= 0.0 {
-                return Err(Error::Domain("rfm_cfg.tol must be positive and finite"));
-            }
-            if !keep_frac.is_finite() || keep_frac <= 0.0 {
-                return Err(Error::Domain(
-                    "rfm_cfg.keep_frac must be positive and finite",
-                ));
-            }
-        }
-        RfmMinibatchPairing::RowwiseNearest => {}
-        RfmMinibatchPairing::ExpGreedy { temp } => {
-            if !temp.is_finite() || temp <= 0.0 {
-                return Err(Error::Domain("rfm_cfg.temp must be positive and finite"));
-            }
-        }
-        RfmMinibatchPairing::PartialRowwise { keep_frac } => {
-            if !keep_frac.is_finite() || keep_frac <= 0.0 {
-                return Err(Error::Domain(
-                    "rfm_cfg.keep_frac must be positive and finite",
-                ));
-            }
-        }
-    }
-
     let b_norm = b.to_owned() / b_total;
 
     // No semidiscrete potentials in this baseline.
@@ -551,43 +518,7 @@ pub fn train_rfm_minibatch_ot_linear(
             }
 
             // 3) Pair x0s <-> ys via selected minibatch coupling.
-            perm = match rfm_cfg.pairing {
-                RfmMinibatchPairing::SinkhornGreedy => minibatch_ot_greedy_pairing(
-                    &x0s.view(),
-                    &ys.view(),
-                    rfm_cfg.reg,
-                    rfm_cfg.max_iter,
-                    rfm_cfg.tol,
-                )?,
-                RfmMinibatchPairing::SinkhornGreedyNormalized => {
-                    minibatch_ot_greedy_pairing_normalized(
-                        &x0s.view(),
-                        &ys.view(),
-                        rfm_cfg.reg,
-                        rfm_cfg.max_iter,
-                        rfm_cfg.tol,
-                    )?
-                }
-                RfmMinibatchPairing::SinkhornSelective { keep_frac } => {
-                    minibatch_ot_selective_pairing(
-                        &x0s.view(),
-                        &ys.view(),
-                        rfm_cfg.reg,
-                        rfm_cfg.max_iter,
-                        rfm_cfg.tol,
-                        keep_frac,
-                    )?
-                }
-                RfmMinibatchPairing::RowwiseNearest => {
-                    minibatch_rowwise_nearest_pairing(&x0s.view(), &ys.view())?
-                }
-                RfmMinibatchPairing::ExpGreedy { temp } => {
-                    minibatch_exp_greedy_pairing(&x0s.view(), &ys.view(), temp)?
-                }
-                RfmMinibatchPairing::PartialRowwise { keep_frac } => {
-                    minibatch_partial_rowwise_pairing(&x0s.view(), &ys.view(), keep_frac)?
-                }
-            };
+            perm = crate::rfm::apply_pairing(&rfm_cfg.pairing, &x0s.view(), &ys.view(), rfm_cfg)?;
         }
 
         // 4) FM regression updates along straight line between paired points.
@@ -616,7 +547,7 @@ pub fn train_rfm_minibatch_ot_linear(
             }
 
             // Condition on the paired y1.
-            field.sgd_step(&xt.view(), t, &y1, &u.view(), fm_cfg.lr);
+            field.sgd_step(&xt.view(), t, &y1, &u.view(), fm_cfg.lr)?;
         }
     }
 
@@ -1219,8 +1150,11 @@ mod tests {
 
         let mse_trained = trained
             .field
-            .mse_batch(&xs.view(), &ts, &ys_batch.view(), &us.view());
-        let mse_untrained = untrained.mse_batch(&xs.view(), &ts, &ys_batch.view(), &us.view());
+            .mse_batch(&xs.view(), &ts, &ys_batch.view(), &us.view())
+            .unwrap();
+        let mse_untrained = untrained
+            .mse_batch(&xs.view(), &ts, &ys_batch.view(), &us.view())
+            .unwrap();
 
         assert!(
             mse_trained < mse_untrained,

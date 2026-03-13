@@ -43,10 +43,16 @@ impl LinearCondField {
     }
 
     /// Evaluate the field at `(x, t)` conditioned on a fixed `y`.
-    pub fn eval(&self, x: &ArrayView1<f32>, t: f32, y: &ArrayView1<f32>) -> Array1<f32> {
+    pub fn eval(
+        &self,
+        x: &ArrayView1<f32>,
+        t: f32,
+        y: &ArrayView1<f32>,
+    ) -> crate::Result<Array1<f32>> {
         let d = self.d();
-        debug_assert_eq!(x.len(), d);
-        debug_assert_eq!(y.len(), d);
+        if x.len() != d || y.len() != d {
+            return Err(crate::Error::Shape("x and y must have length d"));
+        }
 
         // features = [x (d), y (d), t, 1]
         let mut out = Array1::<f32>::zeros(d);
@@ -65,7 +71,7 @@ impl LinearCondField {
             s += self.w[[i, 2 * d + 1]] * 1.0;
             out[i] = s;
         }
-        out
+        Ok(out)
     }
 
     /// One SGD step on mean-squared error:
@@ -80,14 +86,14 @@ impl LinearCondField {
         y: &ArrayView1<f32>,
         u: &ArrayView1<f32>,
         lr: f32,
-    ) {
+    ) -> crate::Result<()> {
         let d = self.d();
-        debug_assert_eq!(x.len(), d);
-        debug_assert_eq!(y.len(), d);
-        debug_assert_eq!(u.len(), d);
+        if x.len() != d || y.len() != d || u.len() != d {
+            return Err(crate::Error::Shape("x, y, and u must have length d"));
+        }
 
         // pred and residual
-        let pred = self.eval(x, t, y);
+        let pred = self.eval(x, t, y)?;
         let mut r = Array1::<f32>::zeros(d);
         for i in 0..d {
             r[i] = pred[i] - u[i];
@@ -109,6 +115,7 @@ impl LinearCondField {
             self.w[[i, 2 * d]] -= lr * ri * t;
             self.w[[i, 2 * d + 1]] -= lr * ri * 1.0;
         }
+        Ok(())
     }
 
     /// Mean squared error averaged over a batch.
@@ -118,24 +125,23 @@ impl LinearCondField {
         ts: &[f32],
         ys: &ArrayView2<f32>,
         us: &ArrayView2<f32>,
-    ) -> f32 {
+    ) -> crate::Result<f32> {
         let n = xs.nrows();
         let d = xs.ncols();
-        debug_assert_eq!(ys.nrows(), n);
-        debug_assert_eq!(ys.ncols(), d);
-        debug_assert_eq!(us.nrows(), n);
-        debug_assert_eq!(us.ncols(), d);
-        debug_assert_eq!(ts.len(), n);
+        if ys.nrows() != n || ys.ncols() != d || us.nrows() != n || us.ncols() != d || ts.len() != n
+        {
+            return Err(crate::Error::Shape("batch dimensions must agree"));
+        }
 
         let mut s: f64 = 0.0;
         for i in 0..n {
-            let pred = self.eval(&xs.row(i), ts[i], &ys.row(i));
+            let pred = self.eval(&xs.row(i), ts[i], &ys.row(i))?;
             for k in 0..d {
                 let r = (pred[k] - us[[i, k]]) as f64;
                 s += r * r;
             }
         }
-        (s / (n as f64 * d as f64)) as f32
+        Ok((s / (n as f64 * d as f64)) as f32)
     }
 }
 
@@ -148,7 +154,7 @@ mod tests {
         let f = LinearCondField::new_zeros(3);
         let x = Array1::from_vec(vec![1.0f32, 2.0, 3.0]);
         let y = Array1::from_vec(vec![4.0f32, 5.0, 6.0]);
-        let out = f.eval(&x.view(), 0.5, &y.view());
+        let out = f.eval(&x.view(), 0.5, &y.view()).unwrap();
         for i in 0..3 {
             assert_eq!(
                 out[i], 0.0,
@@ -170,7 +176,7 @@ mod tests {
         let y = Array1::from_vec(vec![2.0f32]);
         let t = 0.5f32;
 
-        let out = f.eval(&x.view(), t, &y.view());
+        let out = f.eval(&x.view(), t, &y.view()).unwrap();
         // out = 2*1 + 3*2 + 4*0.5 + 5*1 = 2 + 6 + 2 + 5 = 15
         assert!((out[0] - 15.0).abs() < 1e-6, "got {}", out[0]);
     }
@@ -185,7 +191,7 @@ mod tests {
         let t = 0.5f32;
         let lr = 0.01f32;
 
-        let pred_before = f.eval(&x.view(), t, &y.view());
+        let pred_before = f.eval(&x.view(), t, &y.view()).unwrap();
         let loss_before: f32 = pred_before
             .iter()
             .zip(u.iter())
@@ -193,10 +199,10 @@ mod tests {
             .sum();
 
         for _ in 0..100 {
-            f.sgd_step(&x.view(), t, &y.view(), &u.view(), lr);
+            f.sgd_step(&x.view(), t, &y.view(), &u.view(), lr).unwrap();
         }
 
-        let pred_after = f.eval(&x.view(), t, &y.view());
+        let pred_after = f.eval(&x.view(), t, &y.view()).unwrap();
         let loss_after: f32 = pred_after
             .iter()
             .zip(u.iter())
@@ -218,7 +224,9 @@ mod tests {
         let us = Array2::from_shape_vec((2, 2), vec![3.0, 4.0, 1.0, 2.0]).unwrap();
         let ts = vec![0.3f32, 0.7];
 
-        let mse = f.mse_batch(&xs.view(), &ts, &ys.view(), &us.view());
+        let mse = f
+            .mse_batch(&xs.view(), &ts, &ys.view(), &us.view())
+            .unwrap();
         // Expected: ( (9+16) + (1+4) ) / (2*2) = 30/4 = 7.5
         assert!((mse - 7.5).abs() < 1e-5, "expected 7.5, got {mse}");
     }

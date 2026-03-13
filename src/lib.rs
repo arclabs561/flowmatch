@@ -33,13 +33,13 @@
 //! - Lipman et al., *Flow Matching for Generative Modeling* (arXiv:2210.02747):
 //!   the canonical FM objective and linear-path baselines.
 //! - Lipman et al., *Flow Matching Guide and Code* (arXiv:2412.06264):
-//!   a more complete modern reference + design space.
+//!   a comprehensive reference covering the full design space.
 //! - Li et al., *Flow Matching Meets Biology and Life Science: A Survey* (arXiv:2507.17731, 2025):
 //!   a taxonomy of variants (CFM/RFM, non-Euclidean, discrete) and a map of applications/tooling.
 //! - Gat et al., *Discrete Flow Matching* (NeurIPS 2024):
 //!   extending the FM paradigm to discrete data (language, graphs).
 //! - Chen & Lipman, *Riemannian Flow Matching on General Geometries* (arXiv:2302.03660):
-//!   the foundation for FM on manifolds (like the Poincaré ball in `hyp`).
+//!   the foundation for FM on manifolds (like the Poincaré ball in `hyperball`).
 //!
 //! Related variants that are **not** implemented here (yet):
 //!
@@ -61,27 +61,26 @@
 //!
 //! ## Module map
 //!
-//! - `sd_fm`: semidiscrete conditional FM baseline (main implementation)
-//! - `ode`: fixed-step ODE integrators used for sampling (`Euler`, `Heun`)
-//!
-//! # Future: Burn Migration
-//!
-//! This crate currently uses `ndarray` (CPU only). To support large-scale training (e.g. FlowMM),
-//! we plan to migrate the training loops to `burn`, allowing `wgpu`/`torch` backends while keeping
-//! the logic backend-agnostic.
-//!
+//! - `sd_fm`: semidiscrete conditional FM training and sampling
 //! - `rfm`: rectified-flow coupling helpers (minibatch OT pairing)
-//! - `simplex`: simplex utilities for simplex-based “discrete FM” variants
-//! - `discrete_ctmc`: CTMC generator scaffolding for CTMC-based discrete FM
-//! - `non_euclidean`: geodesic interpolant scaffolding (non-Euclidean FM boundary)
+//! - `linear`: simple linear vector-field parameterizations
+//! - `ode`: fixed-step ODE integrators (`Euler`, `Heun`)
+//! - `metrics`: evaluation metrics (JS divergence, entropic OT cost)
+//! - `discrete_ctmc`: CTMC generator scaffolding for discrete FM
+//! - `simplex`: simplex utilities for discrete FM variants
+//! - `riemannian`: Riemannian FM training (feature-gated: `riemannian`)
+//! - `riemannian_ode`: manifold ODE integrators (feature-gated: `riemannian`)
+//! - `burn_euclidean`: Burn-backed Euclidean FM training (feature-gated: `burn`)
+//! - `burn_sd_fm`: Burn-backed SD-FM/RFM training (feature-gated: `burn`)
 
 pub mod discrete_ctmc;
 pub mod linear;
 pub mod metrics;
-pub mod non_euclidean;
 pub mod ode;
 pub mod rfm;
+#[cfg(feature = "riemannian")]
 pub mod riemannian;
+#[cfg(feature = "riemannian")]
 pub mod riemannian_ode;
 pub mod sd_fm;
 pub mod simplex;
@@ -95,10 +94,13 @@ pub mod burn_sd_fm;
 /// flowmatch error variants.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    /// Array shape or dimension mismatch.
     #[error("shape mismatch: {0}")]
     Shape(&'static str),
+    /// Value outside the valid domain (e.g., `t` not in `[0, 1]`).
     #[error("domain error: {0}")]
     Domain(&'static str),
 }
 
+/// Convenience alias for `std::result::Result<T, flowmatch::Error>`.
 pub type Result<T> = std::result::Result<T, Error>;

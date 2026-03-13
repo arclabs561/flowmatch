@@ -20,8 +20,8 @@ fn main() {
     println!();
 
     // Velocity field: v(x, t) = (-y, x).
-    let velocity = |x: &ndarray::ArrayView1<f32>, _t: f32| -> Array1<f32> {
-        Array1::from_vec(vec![-x[1], x[0]])
+    let velocity = |x: &ndarray::ArrayView1<f32>, _t: f32| -> flowmatch::Result<Array1<f32>> {
+        Ok(Array1::from_vec(vec![-x[1], x[0]]))
     };
 
     println!(
@@ -73,7 +73,7 @@ fn main() {
 
         if i < steps {
             // Euler step.
-            let ve = velocity(&xe.view(), 0.0);
+            let ve = velocity(&xe.view(), 0.0).unwrap();
             let mut xe_new = xe.clone();
             for k in 0..2 {
                 xe_new[k] += dt * ve[k];
@@ -81,12 +81,12 @@ fn main() {
             xe = xe_new;
 
             // Heun step.
-            let v0 = velocity(&xh.view(), 0.0);
+            let v0 = velocity(&xh.view(), 0.0).unwrap();
             let mut xh_pred = xh.clone();
             for k in 0..2 {
                 xh_pred[k] += dt * v0[k];
             }
-            let v1 = velocity(&xh_pred.view(), 0.0);
+            let v1 = velocity(&xh_pred.view(), 0.0).unwrap();
             let mut xh_new = xh.clone();
             for k in 0..2 {
                 xh_new[k] += 0.5 * dt * (v0[k] + v1[k]);

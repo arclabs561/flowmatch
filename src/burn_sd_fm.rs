@@ -11,8 +11,6 @@ use burn_core as burn;
 
 use burn::module::Module;
 use burn::tensor::{backend::Backend, Tensor};
-use burn_autodiff::Autodiff;
-use burn_ndarray::NdArray;
 use burn_nn::{Linear, LinearConfig};
 use burn_optim::{GradientsParams, LearningRate, Optimizer, SgdConfig};
 use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
@@ -53,7 +51,7 @@ impl<B: Backend> BurnLinearCondField<B> {
         self.linear.forward(feats)
     }
 
-    fn export_to_ndarray(&self) -> LinearCondField {
+    fn export_to_ndarray(&self) -> crate::Result<LinearCondField> {
         // Burn Linear weight is [d_input, d_output] = [(2d+1), d].
         // LinearCondField wants W as [d_output, (2d+2)] with a constant-bias feature.
         let w_data = self.linear.weight.to_data();
@@ -64,14 +62,17 @@ impl<B: Backend> BurnLinearCondField<B> {
         debug_assert_eq!(d_out, self.d);
         debug_assert_eq!(d_in, 2 * self.d + 1);
 
-        let b = self
-            .linear
-            .bias
-            .as_ref()
-            .map(|b| b.to_data().to_vec::<f32>().expect("bias to_vec"))
-            .unwrap_or_else(|| vec![0.0; d_out]);
+        let b = match self.linear.bias.as_ref() {
+            Some(b) => b
+                .to_data()
+                .to_vec::<f32>()
+                .map_err(|_| crate::Error::Shape("bias to_vec failed"))?,
+            None => vec![0.0; d_out],
+        };
 
-        let w_flat: Vec<f32> = w_data.to_vec::<f32>().expect("weight to_vec");
+        let w_flat: Vec<f32> = w_data
+            .to_vec::<f32>()
+            .map_err(|_| crate::Error::Shape("weight to_vec failed"))?;
         // w_flat is row-major in burn tensor data.
         // Index: w_flat[i * d_out + j] where i in [0,d_in), j in [0,d_out).
 
@@ -85,21 +86,33 @@ impl<B: Backend> BurnLinearCondField<B> {
             w[[j, 2 * self.d + 1]] = b[j];
         }
 
-        LinearCondField { w }
+        Ok(LinearCondField { w })
     }
 }
 
-fn ndarray_to_burn_2<B: Backend>(device: &B::Device, x: &Array2<f32>) -> Tensor<B, 2> {
+fn ndarray_to_burn_2<B: Backend>(
+    device: &B::Device,
+    x: &Array2<f32>,
+) -> crate::Result<Tensor<B, 2>> {
     let (n, d) = x.dim();
-    let data = burn::tensor::TensorData::new(x.as_slice().unwrap_or(&[]).to_vec(), [n, d]);
-    Tensor::from_data(data, device)
+    let slice = x
+        .as_slice()
+        .ok_or(crate::Error::Shape("non-contiguous array"))?;
+    let data = burn::tensor::TensorData::new(slice.to_vec(), [n, d]);
+    Ok(Tensor::from_data(data, device))
 }
 
-fn ndarray_to_burn_2_keepdim<B: Backend>(device: &B::Device, x: &Array1<f32>) -> Tensor<B, 2> {
+fn ndarray_to_burn_2_keepdim<B: Backend>(
+    device: &B::Device,
+    x: &Array1<f32>,
+) -> crate::Result<Tensor<B, 2>> {
     // Shape [batch, 1]
     let n = x.len();
-    let data = burn::tensor::TensorData::new(x.as_slice().unwrap_or(&[]).to_vec(), [n, 1]);
-    Tensor::from_data(data, device)
+    let slice = x
+        .as_slice()
+        .ok_or(crate::Error::Shape("non-contiguous array"))?;
+    let data = burn::tensor::TensorData::new(slice.to_vec(), [n, 1]);
+    Ok(Tensor::from_data(data, device))
 }
 
 /// Burn-backed version of SD-FM training (exports to `TrainedSdFm`).
@@ -187,10 +200,10 @@ pub fn train_sd_fm_semidiscrete_linear_burn(
         }
 
         // Burn step.
-        let x_t = ndarray_to_burn_2::<BurnBackend>(device, &xts);
-        let y_b = ndarray_to_burn_2::<BurnBackend>(device, &ys);
-        let t_b = ndarray_to_burn_2_keepdim::<BurnBackend>(device, &ts);
-        let u_b = ndarray_to_burn_2::<BurnBackend>(device, &us);
+        let x_t = ndarray_to_burn_2::<BurnBackend>(device, &xts)?;
+        let y_b = ndarray_to_burn_2::<BurnBackend>(device, &ys)?;
+        let t_b = ndarray_to_burn_2_keepdim::<BurnBackend>(device, &ts)?;
+        let u_b = ndarray_to_burn_2::<BurnBackend>(device, &us)?;
 
         let pred = model.forward(x_t, y_b, t_b);
         let loss = (pred - u_b).powf_scalar(2.0).mean();
@@ -200,7 +213,7 @@ pub fn train_sd_fm_semidiscrete_linear_burn(
         model = optim.step(lr, model, grads);
     }
 
-    let field = model.export_to_ndarray();
+    let field = model.export_to_ndarray()?;
 
     Ok(TrainedSdFm {
         y: y.to_owned(),
@@ -277,49 +290,7 @@ pub fn train_rfm_minibatch_ot_linear_burn(
                 }
             }
 
-            perm = match rfm_cfg.pairing {
-                crate::sd_fm::RfmMinibatchPairing::SinkhornGreedy => {
-                    crate::rfm::minibatch_ot_greedy_pairing(
-                        &x0s.view(),
-                        &ys.view(),
-                        rfm_cfg.reg,
-                        rfm_cfg.max_iter,
-                        rfm_cfg.tol,
-                    )?
-                }
-                crate::sd_fm::RfmMinibatchPairing::SinkhornGreedyNormalized => {
-                    crate::rfm::minibatch_ot_greedy_pairing_normalized(
-                        &x0s.view(),
-                        &ys.view(),
-                        rfm_cfg.reg,
-                        rfm_cfg.max_iter,
-                        rfm_cfg.tol,
-                    )?
-                }
-                crate::sd_fm::RfmMinibatchPairing::SinkhornSelective { keep_frac } => {
-                    crate::rfm::minibatch_ot_selective_pairing(
-                        &x0s.view(),
-                        &ys.view(),
-                        rfm_cfg.reg,
-                        rfm_cfg.max_iter,
-                        rfm_cfg.tol,
-                        keep_frac,
-                    )?
-                }
-                crate::sd_fm::RfmMinibatchPairing::RowwiseNearest => {
-                    crate::rfm::minibatch_rowwise_nearest_pairing(&x0s.view(), &ys.view())?
-                }
-                crate::sd_fm::RfmMinibatchPairing::ExpGreedy { temp } => {
-                    crate::rfm::minibatch_exp_greedy_pairing(&x0s.view(), &ys.view(), temp)?
-                }
-                crate::sd_fm::RfmMinibatchPairing::PartialRowwise { keep_frac } => {
-                    crate::rfm::minibatch_partial_rowwise_pairing(
-                        &x0s.view(),
-                        &ys.view(),
-                        keep_frac,
-                    )?
-                }
-            };
+            perm = crate::rfm::apply_pairing(&rfm_cfg.pairing, &x0s.view(), &ys.view(), rfm_cfg)?;
         }
 
         // Build the regression batch aligned with the cached permutation.
@@ -340,10 +311,10 @@ pub fn train_rfm_minibatch_ot_linear_burn(
             }
         }
 
-        let x_t = ndarray_to_burn_2::<BurnBackend>(device, &xts);
-        let y1 = ndarray_to_burn_2::<BurnBackend>(device, &ys.select(ndarray::Axis(0), &perm));
-        let t_b = ndarray_to_burn_2_keepdim::<BurnBackend>(device, &ts);
-        let u_b = ndarray_to_burn_2::<BurnBackend>(device, &us);
+        let x_t = ndarray_to_burn_2::<BurnBackend>(device, &xts)?;
+        let y1 = ndarray_to_burn_2::<BurnBackend>(device, &ys.select(ndarray::Axis(0), &perm))?;
+        let t_b = ndarray_to_burn_2_keepdim::<BurnBackend>(device, &ts)?;
+        let u_b = ndarray_to_burn_2::<BurnBackend>(device, &us)?;
 
         let pred = model.forward(x_t, y1, t_b);
         let loss = (pred - u_b).powf_scalar(2.0).mean();
@@ -353,7 +324,7 @@ pub fn train_rfm_minibatch_ot_linear_burn(
         model = optim.step(lr, model, grads);
     }
 
-    let field = model.export_to_ndarray();
+    let field = model.export_to_ndarray()?;
 
     Ok(TrainedSdFm {
         y: y.to_owned(),
