@@ -53,8 +53,8 @@ fn main() {
     println!("\n\n--- Conditional rate matrix R_t at t=0.3 ---\n");
     for &(name, sched) in &schedules {
         let r = conditional_rate_matrix(sched, 0.3, x0, x1, k, eps).unwrap();
-        let kd = sched.kappa_dot(0.3);
-        let kv = sched.kappa(0.3);
+        let kd = sched.kappa_dot(0.3).unwrap();
+        let kv = sched.kappa(0.3).unwrap();
         println!("  {name}: kappa(0.3)={kv:.4}, kappa'(0.3)={kd:.4}");
         println!(
             "  Rate x0->x1 = {:.4}, diagonal = {:.4}\n",
@@ -112,12 +112,12 @@ fn main() {
 
     for i in 0..=10 {
         let t = i as f32 / 10.0;
-        let kl = DiscreteSchedule::Linear.kappa(t);
-        let kc = DiscreteSchedule::CosineSq.kappa(t);
-        let kh = DiscreteSchedule::CosineHalf.kappa(t);
-        let kdl = DiscreteSchedule::Linear.kappa_dot(t);
-        let kdc = DiscreteSchedule::CosineSq.kappa_dot(t);
-        let kdh = DiscreteSchedule::CosineHalf.kappa_dot(t);
+        let kl = DiscreteSchedule::Linear.kappa(t).unwrap();
+        let kc = DiscreteSchedule::CosineSq.kappa(t).unwrap();
+        let kh = DiscreteSchedule::CosineHalf.kappa(t).unwrap();
+        let kdl = DiscreteSchedule::Linear.kappa_dot(t).unwrap();
+        let kdc = DiscreteSchedule::CosineSq.kappa_dot(t).unwrap();
+        let kdh = DiscreteSchedule::CosineHalf.kappa_dot(t).unwrap();
         println!(
             "{:>6.1}  {:>8.4} ({:>6.3})  {:>8.4} ({:>6.3})  {:>8.4} ({:>6.3})",
             t, kl, kdl, kc, kdc, kh, kdh

@@ -72,7 +72,7 @@ fn train_class_field(target: &Array2<f32>, seed: u64) -> LinearCondField {
         // Target velocity: u = y - x0.
         let u = Array1::from_vec(vec![y[0] - x0[0], y[1] - x0[1]]);
 
-        field.sgd_step(&xt.view(), t, &y, &u.view(), LR);
+        field.sgd_step(&xt.view(), t, &y, &u.view(), LR).unwrap();
     }
     field
 }

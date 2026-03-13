@@ -97,6 +97,8 @@ cargo run --release --example rfm_poincare_geodesic_ode --features riemannian
 | `rfm_two_moons` | Two-moons distribution transport |
 | `burn_sd_fm_semidiscrete_linear` | Semidiscrete FM with Burn backend (`--features burn`) |
 | `burn_rfm_minibatch_ot_linear` | RFM with Burn backend (`--features burn`) |
+| `mmd_flow_eval` | MMD (kernel two-sample test) as a flow quality metric |
+| `riemannian_fm_poincare` | Riemannian FM on the Poincare disk (`--features riemannian`) |
 | `profile_breakdown_*` | Where training time goes (Sinkhorn vs SGD) |
 
 Requires `--features sheaf-evals`:
@@ -133,8 +135,10 @@ MSRV: 1.80.
 ## Tests
 
 ```bash
-cargo test -p flowmatch                  # 86 tests
-cargo test -p flowmatch --features burn  # + burn backend tests
+cargo test -p flowmatch                        # 85 tests
+cargo test -p flowmatch --features burn        # + burn backend tests
+cargo test -p flowmatch --features riemannian  # + Riemannian manifold tests
+cargo test -p flowmatch --features sheaf-evals # + cluster/community eval tests
 ```
 
 ## References

@@ -93,7 +93,9 @@ fn estimate_training_mse(
         }
     }
 
-    let mse = field.mse_batch(&xts.view(), &ts, &y_paired.view(), &us.view());
+    let mse = field
+        .mse_batch(&xts.view(), &ts, &y_paired.view(), &us.view())
+        .unwrap();
     mse
 }
 

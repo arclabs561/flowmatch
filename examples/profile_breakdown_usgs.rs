@@ -124,7 +124,7 @@ fn main() -> Result<()> {
                 u[k] = y1[k] - x0[k];
             }
 
-            field.sgd_step(&xt.view(), tt, &y1, &u.view(), lr);
+            field.sgd_step(&xt.view(), tt, &y1, &u.view(), lr).unwrap();
         }
         timings.sgd += t.elapsed();
     }
