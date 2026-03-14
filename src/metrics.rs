@@ -10,7 +10,7 @@ use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 /// Jensen–Shannon divergence between two nonnegative histograms (nats).
 ///
 /// - Inputs may be unnormalized counts; this function normalizes them internally.
-/// - Output is in **nats** (natural log), and satisfies \(0 \le JS \le \ln 2\).
+/// - Output is in **nats** (natural log), and satisfies `0 <= JS <= ln(2)`.
 ///
 /// This is a small wrapper around `logp::jensen_shannon_divergence` to keep flowmatch’s public
 /// surface `f32`-first while reusing the ecosystem’s info-theory primitives.
@@ -52,7 +52,7 @@ pub fn jensen_shannon_divergence_histogram(p: &[f32], q: &[f32], tol: f32) -> Re
 /// - an empirical sample set `xs` with **uniform** weights, and
 /// - a discrete support `y` with weights `b` (will be normalized).
 ///
-/// This returns the scalar transport cost \(\langle C, P\rangle\) for the entropic OT plan.
+/// This returns the scalar transport cost `<C, P>` for the entropic OT plan.
 ///
 /// Notes:
 /// - This is **not** Sinkhorn divergence (debiased). It’s just the entropic OT cost.

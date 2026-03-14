@@ -52,6 +52,6 @@ fn main() {
 
     println!(
         "trained burn SD-FM (exported to ndarray): field W shape = {:?}",
-        trained.field.w.dim()
+        trained.field.w().dim()
     );
 }

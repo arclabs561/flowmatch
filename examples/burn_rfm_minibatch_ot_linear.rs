@@ -47,6 +47,6 @@ fn main() {
 
     println!(
         "trained burn RFM (exported to ndarray): field W shape = {:?}",
-        trained.field.w.dim()
+        trained.field.w().dim()
     );
 }

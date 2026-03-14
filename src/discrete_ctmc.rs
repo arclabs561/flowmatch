@@ -1,7 +1,7 @@
 //! Discrete FM (CTMC-based) scaffolding.
 //!
 //! CTMC-based "discrete flow matching" methods learn (or use) a continuous-time Markov chain
-//! whose generator \(Q(t)\) defines the evolution of a categorical distribution \(p(t)\).
+//! whose generator `Q(t)` defines the evolution of a categorical distribution `p(t)`.
 //!
 //! This module provides:
 //! - a generator validation contract
@@ -220,7 +220,7 @@ impl CtmcGenerator {
 }
 
 /// Check that `q` is a valid CTMC rate matrix (non-negative off-diagonals, rows sum to zero).
-pub fn validate_generator(q: &ArrayView2<f32>, tol: f32) -> Result<()> {
+pub(crate) fn validate_generator(q: &ArrayView2<f32>, tol: f32) -> Result<()> {
     let n = q.nrows();
     if q.ncols() != n {
         return Err(Error::Shape("Q must be square"));

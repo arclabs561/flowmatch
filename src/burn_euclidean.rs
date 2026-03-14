@@ -5,11 +5,7 @@
 //!
 //! Current scope:
 //! - A tiny conditional vector field (`BurnEuclideanCondMlp`) over a straight-line path.
-//! - Minimal helpers to compute \(x_t = (1-t)x_0 + t x_1\) and \(u_t = x_1 - x_0\).
-//!
-//! Near-term roadmap:
-//! - Replace the "toy" training stub with a real Burn optimizer loop.
-//! - Add a `burn`-backed Riemannian FM variant once manifold ops have a tensor backend.
+//! - Minimal helpers to compute `x_t = (1-t)x_0 + t x_1` and `u_t = x_1 - x_0`.
 
 use burn_core as burn;
 
@@ -59,7 +55,7 @@ impl<B: Backend> BurnEuclideanCondMlp<B> {
     }
 }
 
-/// Straight-line path \(x_t = (1-t)x_0 + t x_1\) and target velocity \(u_t = x_1 - x_0\).
+/// Straight-line path `x_t = (1-t)x_0 + t x_1` and target velocity `u_t = x_1 - x_0`.
 ///
 /// `t` is expected as `[batch, 1]`.
 pub fn euclidean_path_targets<B: Backend>(
