@@ -11,14 +11,14 @@ use crate::ode::OdeMethod;
 
 /// Integrate a Riemannian ODE forward with fixed steps on a manifold.
 ///
-/// ODE: \( \dot{x}(t) = v(x(t), t) \) where \(v(x,t) \in T_x M\).
+/// ODE: `dx/dt = v(x(t), t)` where `v(x,t) in T_x M`.
 ///
 /// - `method`: `Euler` or `Heun`.
 /// - `x0`: initial point on the manifold.
 /// - `t0`: initial time.
 /// - `dt`: step size.
 /// - `steps`: number of steps (must be >= 1).
-/// - `f`: returns a tangent vector in the current tangent space \(T_x M\).
+/// - `f`: returns a tangent vector in the current tangent space `T_x M`.
 pub fn integrate_fixed_manifold<M>(
     method: OdeMethod,
     manifold: &M,

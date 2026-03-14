@@ -20,12 +20,12 @@
 //! ## How this maps to “Flow Matching” (papers)
 //!
 //! The core training objective used here is the standard *conditional flow matching* regression
-//! (sample \(t\), sample a point on a path \(x_t\), regress a vector field \(v_\theta(x_t,t;\cdot)\)
-//! toward a target velocity \(u_t\)). Concretely:
+//! (sample `t`, sample a point on a path `x_t`, regress a vector field `v_theta(x_t, t)`
+//! toward a target velocity `u_t`). Concretely:
 //!
 //! - `sd_fm::train_sd_fm_semidiscrete_linear` uses a **linear interpolation path**
-//!   \(x_t = (1-t)x_0 + t y_j\) and target \(u_t = y_j - x_0\).
-//! - A semidiscrete “pick \(j\)” step is provided by `wass::semidiscrete` (potentials + hard assignment),
+//!   `x_t = (1-t) x_0 + t y_j` and target `u_t = y_j - x_0`.
+//! - A semidiscrete “pick `j`” step is provided by `wass::semidiscrete` (potentials + hard assignment),
 //!   which acts like a simple coupling / conditioning mechanism.
 //!
 //! ## References (conceptual anchors; not “implemented fully”)
@@ -83,7 +83,7 @@ pub mod riemannian;
 #[cfg(feature = "riemannian")]
 pub mod riemannian_ode;
 pub mod sd_fm;
-pub mod simplex;
+pub(crate) mod simplex;
 
 #[cfg(feature = "burn")]
 pub mod burn_euclidean;

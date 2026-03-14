@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 //! Simplex-based helpers (for “discrete FM on the simplex” style methods).
 //!
 //! This module is intentionally minimal: it provides **explicit** utilities for

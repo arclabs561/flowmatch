@@ -26,7 +26,7 @@ use ndarray::{Array1, Array2, ArrayView1, ArrayView2};
 #[derive(Debug, Clone)]
 pub struct LinearCondField {
     /// Parameters `W` with shape `(d, 2d+2)`.
-    pub w: Array2<f32>,
+    pub(crate) w: Array2<f32>,
 }
 
 impl LinearCondField {
@@ -37,8 +37,13 @@ impl LinearCondField {
         }
     }
 
+    /// The weight matrix `W` with shape `(d, 2d+2)`.
+    pub fn w(&self) -> &Array2<f32> {
+        &self.w
+    }
+
     /// Output dimension of the field.
-    pub fn d(&self) -> usize {
+    pub(crate) fn d(&self) -> usize {
         self.w.nrows()
     }
 

@@ -1,6 +1,6 @@
 //! Rectified Flow Matching (RFM) helpers.
 //!
-//! In the FM literature, “rectification” is largely about **the coupling** \(\pi(x_0,x_1)\):
+//! In the FM literature, “rectification” is largely about **the coupling** `pi(x_0, x_1)`:
 //! choosing (or improving) which base samples are paired with which target samples so that
 //! trajectories become straighter / less “curly”.
 //!
@@ -61,7 +61,7 @@ fn sq_euclidean_cost_matrix_from_views(
 ///
 /// This is not the Hungarian algorithm; it’s a simple deterministic approximation:
 /// take the largest remaining entry, match that row/col, repeat.
-pub fn greedy_bipartite_match_from_weights(w: &ArrayView2<f32>) -> Result<Vec<usize>> {
+pub(crate) fn greedy_bipartite_match_from_weights(w: &ArrayView2<f32>) -> Result<Vec<usize>> {
     let n = w.nrows();
     if w.ncols() != n {
         return Err(Error::Shape("weight matrix must be square"));
@@ -117,10 +117,6 @@ pub fn greedy_bipartite_match_from_weights(w: &ArrayView2<f32>) -> Result<Vec<us
 ///
 /// This is a practical “minibatch OT pairing” primitive used in rectified/OT flow matching
 /// papers (pair within batch, then train on straight lines between paired points).
-///
-/// If `normalize_cost` is true, the cost matrix is divided by its maximum value
-/// before Sinkhorn. This can stabilize convergence when cost magnitudes vary widely
-/// across batches (recommended by torchcfm for heterogeneous data).
 pub fn minibatch_ot_greedy_pairing(
     x: &ArrayView2<f32>,
     y: &ArrayView2<f32>,
@@ -175,64 +171,6 @@ pub fn minibatch_ot_greedy_pairing(
     greedy_bipartite_match_from_weights(&plan.view())
 }
 
-/// Like [`minibatch_ot_greedy_pairing`] but normalizes the cost matrix before Sinkhorn.
-///
-/// This divides the cost matrix by its maximum value, which stabilizes Sinkhorn for
-/// heterogeneous data where cost magnitudes vary across batches.
-pub fn minibatch_ot_greedy_pairing_normalized(
-    x: &ArrayView2<f32>,
-    y: &ArrayView2<f32>,
-    reg: f32,
-    max_iter: usize,
-    tol: f32,
-) -> Result<Vec<usize>> {
-    let n = x.nrows();
-    if y.nrows() != n {
-        return Err(Error::Shape("x and y must have same number of rows"));
-    }
-    if x.ncols() != y.ncols() {
-        return Err(Error::Shape("x and y must have same dimension"));
-    }
-    if n == 0 {
-        return Ok(Vec::new());
-    }
-    if !reg.is_finite() || reg <= 0.0 {
-        return Err(Error::Domain("reg must be positive and finite"));
-    }
-    if max_iter == 0 {
-        return Err(Error::Domain("max_iter must be >= 1"));
-    }
-    if !tol.is_finite() || tol <= 0.0 {
-        return Err(Error::Domain("tol must be positive and finite"));
-    }
-    if x.iter().any(|&v| !v.is_finite()) || y.iter().any(|&v| !v.is_finite()) {
-        return Err(Error::Domain("x/y contain NaN/Inf"));
-    }
-
-    let mut cost = sq_euclidean_cost_matrix_from_views(x, y)?;
-
-    // Normalize cost: divide by max to stabilize Sinkhorn.
-    let max_cost = cost.iter().cloned().fold(0.0f32, f32::max);
-    if max_cost > 0.0 {
-        cost.mapv_inplace(|c| c / max_cost);
-    }
-
-    let a = Array1::<f32>::from_elem(n, 1.0 / n as f32);
-    let b = Array1::<f32>::from_elem(n, 1.0 / n as f32);
-
-    let (plan, _dist, _iters) =
-        wass::sinkhorn_log_with_convergence(&a, &b, &cost, reg, max_iter, tol)
-            .map_err(|_| Error::Domain("sinkhorn coupling did not converge"))?;
-
-    let plan = if plan.sum().abs() < DEGENERATE_PLAN_TOL {
-        Array2::<f32>::from_elem((n, n), 1.0 / (n * n) as f32)
-    } else {
-        plan
-    };
-
-    greedy_bipartite_match_from_weights(&plan.view())
-}
-
 /// Partial Sinkhorn pairing:
 /// - compute a Sinkhorn plan between `x` and `y`
 /// - compute each row's expected transport cost under the plan
@@ -242,7 +180,7 @@ pub fn minibatch_ot_greedy_pairing_normalized(
 ///
 /// This keeps Sinkhorn's global coupling signal, but avoids the strict "use every column" constraint
 /// in the final assignment, which can otherwise force minibatch outliers to be used.
-pub fn minibatch_ot_selective_pairing(
+pub(crate) fn minibatch_ot_selective_pairing(
     x: &ArrayView2<f32>,
     y: &ArrayView2<f32>,
     reg: f32,
@@ -356,7 +294,7 @@ pub fn minibatch_ot_selective_pairing(
 }
 
 /// Fast minibatch pairing: greedy row-wise nearest neighbor on the Euclidean cost matrix.
-pub fn minibatch_rowwise_nearest_pairing(
+pub(crate) fn minibatch_rowwise_nearest_pairing(
     x: &ArrayView2<f32>,
     y: &ArrayView2<f32>,
 ) -> Result<Vec<usize>> {
@@ -410,7 +348,7 @@ pub fn minibatch_rowwise_nearest_pairing(
 /// This is a pragmatic stand-in for "partial OT" in minibatches: it avoids forcing every column
 /// to be used, which can create huge, misleading displacements when a minibatch contains a rare
 /// outlier target.
-pub fn minibatch_partial_rowwise_pairing(
+pub(crate) fn minibatch_partial_rowwise_pairing(
     x: &ArrayView2<f32>,
     y: &ArrayView2<f32>,
     keep_frac: f32,
@@ -498,7 +436,7 @@ pub fn minibatch_partial_rowwise_pairing(
 }
 
 /// Fast minibatch pairing: convert costs to weights via `exp(-cost / temp)` then greedy match.
-pub fn minibatch_exp_greedy_pairing(
+pub(crate) fn minibatch_exp_greedy_pairing(
     x: &ArrayView2<f32>,
     y: &ArrayView2<f32>,
     temp: f32,
@@ -586,10 +524,6 @@ pub fn apply_pairing(
         RfmMinibatchPairing::SinkhornGreedy => {
             validate_sinkhorn_fields(cfg)?;
             minibatch_ot_greedy_pairing(x0s, ys, cfg.reg, cfg.max_iter, cfg.tol)
-        }
-        RfmMinibatchPairing::SinkhornGreedyNormalized => {
-            validate_sinkhorn_fields(cfg)?;
-            minibatch_ot_greedy_pairing_normalized(x0s, ys, cfg.reg, cfg.max_iter, cfg.tol)
         }
         RfmMinibatchPairing::SinkhornSelective { keep_frac } => {
             validate_sinkhorn_fields(cfg)?;
@@ -1280,36 +1214,6 @@ mod tests {
         assert_eq!(full.iter().filter(|&&j| j == n - 1).count(), 1);
         // Selective pairing should not be forced to use the outlier column.
         assert_eq!(sel.iter().filter(|&&j| j == n - 1).count(), 0);
-    }
-
-    // Normalized pairing should produce valid permutations, same as unnormalized.
-    proptest! {
-        #[test]
-        fn prop_normalized_sinkhorn_pairing_ok_implies_permutation(
-            n in 2usize..10,
-            d in 1usize..8,
-            reg in 0.05f32..0.5f32,
-            seed in any::<u64>(),
-        ) {
-            use rand::SeedableRng;
-            use rand_chacha::ChaCha8Rng;
-            use rand_distr::{Distribution, StandardNormal};
-
-            let mut rng = ChaCha8Rng::seed_from_u64(seed);
-            let mut x = Array2::<f32>::zeros((n, d));
-            let mut y = Array2::<f32>::zeros((n, d));
-            for i in 0..n {
-                for k in 0..d {
-                    x[[i, k]] = StandardNormal.sample(&mut rng);
-                    y[[i, k]] = StandardNormal.sample(&mut rng);
-                }
-            }
-
-            if let Ok(p) = minibatch_ot_greedy_pairing_normalized(&x.view(), &y.view(), reg, 500, 2e-2) {
-                prop_assert_eq!(p.len(), n);
-                prop_assert!(is_permutation(&p));
-            }
-        }
     }
 
     proptest! {

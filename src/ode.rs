@@ -32,7 +32,7 @@ pub enum OdeMethod {
 /// - `t0`: initial time
 /// - `dt`: step size
 /// - `steps`: number of steps (must be >= 1)
-/// - `f`: returns velocity \(v(x,t)\)
+/// - `f`: returns velocity `v(x,t)`
 pub fn integrate_fixed(
     method: OdeMethod,
     x0: &Array1<f32>,

@@ -11,10 +11,8 @@
 //! cargo run -p flowmatch --example rfm_minibatch_outlier_partial
 //! ```
 
-use flowmatch::rfm::{
-    minibatch_ot_greedy_pairing, minibatch_ot_selective_pairing, minibatch_partial_rowwise_pairing,
-    minibatch_rowwise_nearest_pairing,
-};
+use flowmatch::rfm::apply_pairing;
+use flowmatch::sd_fm::{RfmMinibatchOtConfig, RfmMinibatchPairing};
 use ndarray::Array2;
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
@@ -44,13 +42,40 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .and_then(|s| s.parse::<f32>().ok())
         .unwrap_or(0.8);
 
-    let perm_full = minibatch_rowwise_nearest_pairing(&x.view(), &y.view())?;
-    let perm_part = minibatch_partial_rowwise_pairing(&x.view(), &y.view(), keep_frac)?;
+    let sinkhorn_cfg = RfmMinibatchOtConfig {
+        reg: 0.2,
+        max_iter: 2_000,
+        tol: 2e-3,
+        pairing: RfmMinibatchPairing::SinkhornGreedy,
+        pairing_every: 1,
+    };
+
+    let perm_full = apply_pairing(
+        &RfmMinibatchPairing::RowwiseNearest,
+        &x.view(),
+        &y.view(),
+        &sinkhorn_cfg,
+    )?;
+    let perm_part = apply_pairing(
+        &RfmMinibatchPairing::PartialRowwise { keep_frac },
+        &x.view(),
+        &y.view(),
+        &sinkhorn_cfg,
+    )?;
 
     // Also show Sinkhorn-based variants (slower, but more "RFM-faithful").
-    let perm_sinkhorn = minibatch_ot_greedy_pairing(&x.view(), &y.view(), 0.2, 2_000, 2e-3)?;
-    let perm_sinkhorn_sel =
-        minibatch_ot_selective_pairing(&x.view(), &y.view(), 0.2, 2_000, 2e-3, keep_frac)?;
+    let perm_sinkhorn = apply_pairing(
+        &RfmMinibatchPairing::SinkhornGreedy,
+        &x.view(),
+        &y.view(),
+        &sinkhorn_cfg,
+    )?;
+    let perm_sinkhorn_sel = apply_pairing(
+        &RfmMinibatchPairing::SinkhornSelective { keep_frac },
+        &x.view(),
+        &y.view(),
+        &sinkhorn_cfg,
+    )?;
 
     fn summarize(name: &str, x: &Array2<f32>, y: &Array2<f32>, perm: &[usize]) {
         let n = x.nrows();

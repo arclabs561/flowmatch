@@ -12,9 +12,8 @@ mod common;
 
 use common::usgs::{build_support_and_weights, parse_usgs_csv};
 use flowmatch::linear::LinearCondField;
-use flowmatch::rfm::minibatch_ot_greedy_pairing;
-use flowmatch::rfm::minibatch_rowwise_nearest_pairing;
-use flowmatch::sd_fm::RfmMinibatchOtConfig;
+use flowmatch::rfm::apply_pairing;
+use flowmatch::sd_fm::{RfmMinibatchOtConfig, RfmMinibatchPairing};
 use flowmatch::Result;
 use ndarray::{Array1, Array2};
 use rand::Rng;
@@ -94,18 +93,22 @@ fn main() -> Result<()> {
 
         // 3) Minibatch OT pairing (Sinkhorn).
         let t = Instant::now();
-        let perm = minibatch_ot_greedy_pairing(
+        let perm = apply_pairing(
+            &RfmMinibatchPairing::SinkhornGreedy,
             &x0s.view(),
             &ys.view(),
-            rfm_cfg.reg,
-            rfm_cfg.max_iter,
-            rfm_cfg.tol,
+            &rfm_cfg,
         )?;
         timings.sinkhorn_pair += t.elapsed();
 
         // 3b) Fast pairing (rowwise nearest). This is purely for profiling comparison.
         let t = Instant::now();
-        let _perm_fast = minibatch_rowwise_nearest_pairing(&x0s.view(), &ys.view())?;
+        let _perm_fast = apply_pairing(
+            &RfmMinibatchPairing::RowwiseNearest,
+            &x0s.view(),
+            &ys.view(),
+            &rfm_cfg,
+        )?;
         timings.fast_pair += t.elapsed();
 
         // 4) FM regression updates.

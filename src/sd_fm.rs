@@ -111,9 +111,11 @@ impl TimestepSchedule {
     }
 }
 
-/// Training configuration for SD-FM.
+/// Training configuration for flow matching.
+///
+/// Used across SD-FM, RFM, and Riemannian FM training.
 #[derive(Debug, Clone)]
-pub struct SdFmTrainConfig {
+pub struct FmTrainConfig {
     /// SGD learning rate for the vector field.
     pub lr: f32,
     /// Number of SGD steps.
@@ -128,7 +130,10 @@ pub struct SdFmTrainConfig {
     pub t_schedule: TimestepSchedule,
 }
 
-impl Default for SdFmTrainConfig {
+/// Backward-compatible alias.
+pub type SdFmTrainConfig = FmTrainConfig;
+
+impl Default for FmTrainConfig {
     fn default() -> Self {
         Self {
             lr: 5e-3,
@@ -148,10 +153,6 @@ impl Default for SdFmTrainConfig {
 pub enum RfmMinibatchPairing {
     /// Current default: Sinkhorn OT plan + greedy matching.
     SinkhornGreedy,
-    /// Like `SinkhornGreedy` but normalizes the cost matrix by its maximum value before
-    /// running Sinkhorn. This stabilizes convergence when cost magnitudes vary widely across
-    /// batches (recommended by torchcfm for heterogeneous data).
-    SinkhornGreedyNormalized,
     /// Partial Sinkhorn pairing: compute a Sinkhorn plan, then only enforce one-to-one matching
     /// for the most confident fraction of rows. Remaining rows fall back to per-row argmax in
     /// the Sinkhorn plan (duplicates allowed).
@@ -328,7 +329,7 @@ impl TrainedSdFm {
 ///
 /// Stages:
 /// - fit semidiscrete potentials `g` so noise assignments match `b`
-/// - train a conditional vector field to predict the linear-path flow target \(u = y - x_0\)
+/// - train a conditional vector field to predict the linear-path flow target `u = y - x_0`
 pub fn train_sd_fm_semidiscrete_linear(
     y: &ArrayView2<f32>,
     b: &ArrayView1<f32>,
