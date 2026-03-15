@@ -64,6 +64,11 @@ pub(crate) fn sample_categorical_from_probs(
 /// - **LogitNormal**: `t = sigmoid(N(mean, std))`, used in Stable Diffusion 3 (Esser et al. 2024)
 ///   and recommended in the FM Guide (Lipman et al. 2024). Concentrates mass near `t=0.5` by default,
 ///   but `mean`/`std` parameters can shift and widen the distribution.
+///
+/// The conditional velocity target `u_t = (y - x_t) / (1 - t)` has variance that
+/// diverges as `t -> 1`. Non-uniform schedules (U-shaped, logit-normal) reduce
+/// gradient variance by concentrating samples away from this singularity
+/// (Yang et al. 2026, "Stable Velocity").
 #[derive(Debug, Clone, Copy, Default)]
 pub enum TimestepSchedule {
     /// Uniform `t ~ U[0,1]`.
@@ -149,9 +154,17 @@ impl Default for FmTrainConfig {
 /// Configuration for minibatch-OT rectified flow matching (RFM) coupling.
 ///
 /// This config controls the **coupling** computation, not the vector field SGD.
+///
+/// Minibatch Sinkhorn coupling is a biased estimator of the full OT plan
+/// (Fatras et al. 2021, "Minibatch Optimal Transport Distances"). Bias
+/// decreases with batch size. Epsilon (`reg`) values below ~0.01 relative
+/// to the cost scale risk numerical instability in log-sum-exp.
 #[derive(Debug, Clone, Copy)]
 pub enum RfmMinibatchPairing {
-    /// Current default: Sinkhorn OT plan + greedy matching.
+    /// Sinkhorn OT plan + greedy matching (default).
+    ///
+    /// Uses minibatch Sinkhorn, which is a biased OT estimator --
+    /// bias decreases with batch size (Fatras et al. 2021).
     SinkhornGreedy,
     /// Partial Sinkhorn pairing: compute a Sinkhorn plan, then only enforce one-to-one matching
     /// for the most confident fraction of rows. Remaining rows fall back to per-row argmax in
@@ -159,6 +172,10 @@ pub enum RfmMinibatchPairing {
     ///
     /// This avoids "using every column" in the final assignment, mitigating minibatch outlier
     /// forcing while keeping Sinkhorn's global coupling signal.
+    ///
+    /// Motivated by partial optimal transport (Caffarelli & McCann 2010, Figalli 2010):
+    /// relaxing to partial matching reduces spurious long-range pairings when
+    /// minibatch source and target supports do not fully overlap.
     SinkhornSelective {
         /// Fraction of rows to enforce one-to-one matching (rest use argmax).
         keep_frac: f32,
@@ -178,6 +195,10 @@ pub enum RfmMinibatchPairing {
     ///
     /// For the remaining rows, we fall back to per-row nearest neighbor (allowing duplicates),
     /// which avoids forcing a match to a rare/outlier target within a minibatch.
+    ///
+    /// Motivated by partial optimal transport: forcing a complete bijection on minibatches
+    /// creates spurious long-range pairings when supports don't fully overlap.
+    /// Relaxing to partial matching reduces these incorrect mappings.
     ///
     /// `keep_frac` is the fraction of rows to match one-to-one (clamped to `(0, 1]`).
     PartialRowwise {

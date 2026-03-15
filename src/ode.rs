@@ -18,6 +18,12 @@
 use ndarray::{Array1, ArrayView1};
 
 /// Fixed-step ODE method.
+///
+/// In flow matching, learned velocity fields are generally not constant along
+/// trajectories -- paths curve even after rectification. Heun (2nd order)
+/// compensates for this curvature and typically needs fewer total function
+/// evaluations than Euler for equivalent endpoint accuracy, despite costing
+/// 2 evaluations per step.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OdeMethod {
     /// Explicit Euler (1st order).
