@@ -1,9 +1,10 @@
 //! Minimal ODE integrators for sampling flow models.
 //!
 //! This crate uses ODE sampling of the form:
-//! \[
+//!
+//! $$
 //! \frac{dx}{dt} = v_\theta(x,t;\cdot)
-//! \]
+//! $$
 //!
 //! We keep this module tiny and deterministic: no adaptive stepping, no hidden tolerances.
 //!
