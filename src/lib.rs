@@ -65,6 +65,7 @@
 //! - `rfm`: rectified-flow coupling helpers (minibatch OT pairing)
 //! - `linear`: simple linear vector-field parameterizations
 //! - `ode`: fixed-step ODE integrators (`Euler`, `Heun`)
+//! - `ot_cfm`: OT-conditional flow matching (mini-batch OT coupling for CFM training)
 //! - `metrics`: evaluation metrics (JS divergence, entropic OT cost)
 //! - `discrete_ctmc`: CTMC generator scaffolding for discrete FM
 //! - `simplex`: simplex utilities for discrete FM variants
@@ -77,6 +78,7 @@ pub mod discrete_ctmc;
 pub mod linear;
 pub mod metrics;
 pub mod ode;
+pub mod ot_cfm;
 pub mod rfm;
 #[cfg(feature = "riemannian")]
 pub mod riemannian;
