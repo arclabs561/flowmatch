@@ -66,6 +66,7 @@
 //! - `linear`: simple linear vector-field parameterizations
 //! - `ode`: fixed-step ODE integrators (`Euler`, `Heun`)
 //! - `ot_cfm`: OT-conditional flow matching (mini-batch OT coupling for CFM training)
+//! - `energy`: energy matching (scalar energy whose gradient gives the velocity field)
 //! - `metrics`: evaluation metrics (JS divergence, entropic OT cost)
 //! - `discrete_ctmc`: CTMC generator scaffolding for discrete FM
 //! - `simplex`: simplex utilities for discrete FM variants
@@ -75,6 +76,7 @@
 //! - `burn_sd_fm`: Burn-backed SD-FM/RFM training (feature-gated: `burn`)
 
 pub mod discrete_ctmc;
+pub mod energy;
 pub mod linear;
 pub mod metrics;
 pub mod ode;
