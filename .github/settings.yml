@@ -2,7 +2,7 @@
 # https://github.com/repository-settings/app
 
 repository:
-  description: "Flow matching primitives (ndarray-first) with semidiscrete FM + RFM experiments"
+  description: "Flow matching"
   homepage: "https://docs.rs/flowmatch"
   private: false
   has_issues: true
