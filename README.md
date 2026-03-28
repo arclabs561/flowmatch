@@ -4,7 +4,7 @@
 [![Documentation](https://docs.rs/flowmatch/badge.svg)](https://docs.rs/flowmatch)
 [![CI](https://github.com/arclabs561/flowmatch/actions/workflows/ci.yml/badge.svg)](https://github.com/arclabs561/flowmatch/actions/workflows/ci.yml)
 
-Flow matching in Rust. Train generative models that learn to transport noise to data via ODE vector fields.
+Flow matching.
 
 ## Problem
 
