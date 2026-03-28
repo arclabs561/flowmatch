@@ -77,37 +77,7 @@ Some generated samples (lat, lon):
 cargo run --release --example rfm_poincare_geodesic_ode --features riemannian
 ```
 
-### All examples
-
-| Example | What it shows |
-|---|---|
-| `sd_fm_semidiscrete_linear` | Gaussian noise to discrete targets via semidiscrete OT |
-| `rfm_minibatch_ot_linear` | Minibatch Sinkhorn coupling for straighter trajectories |
-| `rfm_minibatch_outlier_partial` | Outlier forcing problem and partial pairing fix |
-| `rfm_protein_torsions_1bpi` | Real protein phi/psi angles on the torus, JS divergence metric |
-| `rfm_usgs_earthquakes_sphere` | Real earthquake locations on S^2, OT cost metric |
-| `rfm_textish_tokens` | Token embeddings with TF-IDF weights |
-| `rfm_torsions_nfe_curve` | Sample quality vs. ODE steps (torsion data) |
-| `rfm_usgs_nfe_curve` | Sample quality vs. ODE steps (earthquake data) |
-| `rfm_usgs_solver_nfe_tradeoff` | Euler vs. Heun under equal compute budgets |
-| `ode_comparison` | Euler vs Heun on a 2D circular ODE (radius preservation) |
-| `rfm_poincare_geodesic_ode` | Riemannian ODE on Poincare ball (`--features riemannian`) |
-| `discrete_ctmc_path_evolution` | CTMC path evolution with time-dependent generators |
-| `rfm_conditional_2d` | 2D conditional flow matching visualization |
-| `rfm_two_moons` | Two-moons distribution transport |
-| `burn_sd_fm_semidiscrete_linear` | Semidiscrete FM with Burn backend (`--features burn`) |
-| `burn_rfm_minibatch_ot_linear` | RFM with Burn backend (`--features burn`) |
-| `mmd_flow_eval` | MMD (kernel two-sample test) as a flow quality metric |
-| `riemannian_fm_poincare` | Riemannian FM on the Poincare disk (`--features riemannian`) |
-| `profile_breakdown_*` | Where training time goes (Sinkhorn vs SGD) |
-
-Requires `--features sheaf-evals`:
-
-| Example | What it shows |
-|---|---|
-| `rfm_usgs_earthquakes_cluster_mass` | Do generated samples preserve cluster structure? |
-| `rfm_usgs_knn_leiden` | kNN graph + Leiden community detection on generated data |
-| `rfm_usgs_full_pipeline_report` | Full pipeline with all metrics and timings |
+See `examples/` for more, including discrete CTMC, two-moons, conditional 2D, Burn backend variants (`--features burn`), Riemannian Poincare disk (`--features riemannian`), and cluster/community evaluation (`--features sheaf-evals`).
 
 ## What it provides
 
@@ -120,13 +90,6 @@ Requires `--features sheaf-evals`:
 **Discrete FM**: CTMC generator scaffolding with cosine-squared schedule [3], conditional probability paths, conditional rate matrices.
 
 **Evaluation**: JS divergence on histograms, entropic OT cost.
-
-## Dependencies
-
-- [`wass`](https://github.com/arclabs561/wass) -- optimal transport (Sinkhorn, coupling)
-- [`skel`](https://github.com/arclabs561/skel) -- manifold trait (exp/log/transport)
-- [`logp`](https://github.com/arclabs561/logp) -- information theory (JS divergence)
-- [`hyperball`](https://github.com/arclabs561/hyperball) -- hyperbolic geometry (dev-dependency for Riemannian tests)
 
 ## Status
 
