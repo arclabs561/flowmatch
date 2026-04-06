@@ -46,12 +46,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         for i in 0..batch_size {
             let c = &centers[i % 4];
             for j in 0..dim {
-                x1[[i, j]] = c[j] + 0.3 * { let v: f64 = StandardNormal.sample(&mut rng); v as f32 };
+                x1[[i, j]] = c[j]
+                    + 0.3 * {
+                        let v: f64 = StandardNormal.sample(&mut rng);
+                        v as f32
+                    };
             }
         }
 
         // Timesteps t ~ U[0,1].
-        let t: Vec<f32> = (0..batch_size).map(|_| rng.random_range(0.0_f32..1.0)).collect();
+        let t: Vec<f32> = (0..batch_size)
+            .map(|_| rng.random_range(0.0_f32..1.0))
+            .collect();
 
         // OT-CFM training step: coupling + interpolation + velocity targets.
         let targets = ot_cfm_training_step(&x0.view(), &x1.view(), &t, &ot_cfg)?;
@@ -94,14 +100,9 @@ fn evaluate_sampling(
         let c_idx = i % 4;
         let y = Array1::from_vec(centers[c_idx].to_vec());
 
-        let result = integrate_fixed(
-            OdeMethod::Heun,
-            &x,
-            0.0,
-            dt,
-            ode_steps,
-            |x_arr, t_val| field.eval(x_arr, t_val, &y.view()),
-        )?;
+        let result = integrate_fixed(OdeMethod::Heun, &x, 0.0, dt, ode_steps, |x_arr, t_val| {
+            field.eval(x_arr, t_val, &y.view())
+        })?;
 
         let dist: f32 = result
             .iter()
