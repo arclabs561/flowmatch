@@ -272,7 +272,10 @@ mod tests {
     fn energy_matching_loss_zero_for_equal() {
         let vals = vec![1.0f32, 2.0, 3.0];
         let loss = energy_matching_loss(&vals, &vals).unwrap();
-        assert!(loss.abs() < 1e-7, "loss should be 0 for equal inputs, got {loss}");
+        assert!(
+            loss.abs() < 1e-7,
+            "loss should be 0 for equal inputs, got {loss}"
+        );
     }
 
     #[test]
