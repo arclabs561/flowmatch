@@ -29,3 +29,9 @@ jobs:
 
       - name: check (burn)
         run: cargo check --all-targets --features burn
+
+      - name: Semver check
+        if: github.event_name == 'pull_request'
+        run: |
+          cargo install cargo-semver-checks --locked || true
+          cargo semver-checks
