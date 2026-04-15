@@ -3,3 +3,4 @@ target/
 .DS_Store
 .claude/settings.local.json
 proptest-regressions/
+Cargo.lock
