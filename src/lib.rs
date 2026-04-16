@@ -7,7 +7,7 @@
 //!
 //! - it implements **training loops** and **sampling** for flow-matching style models,
 //! - it depends on `wass` for OT-shaped coupling primitives (e.g. semidiscrete assignments),
-//! - it does not provide a CLI or experiment runner (that belongs in L6 / apps).
+//! - it does not provide a CLI or experiment runner.
 //!
 //! ## Public invariants (must not change)
 //!
