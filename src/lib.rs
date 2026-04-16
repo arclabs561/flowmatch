@@ -61,6 +61,7 @@
 //!
 //! ## Module map
 //!
+//! - `flow`: [`VectorField`] trait and [`flow_drift`] primitive (canonical home; was `wass::flow`)
 //! - `sd_fm`: semidiscrete conditional FM training and sampling
 //! - `rfm`: rectified-flow coupling helpers (minibatch OT pairing)
 //! - `linear`: simple linear vector-field parameterizations
@@ -77,6 +78,7 @@
 
 pub mod discrete_ctmc;
 pub mod energy;
+pub mod flow;
 pub mod linear;
 pub mod metrics;
 pub mod ode;
@@ -88,6 +90,8 @@ pub mod riemannian;
 pub mod riemannian_ode;
 pub mod sd_fm;
 pub(crate) mod simplex;
+
+pub use flow::{flow_drift, VectorField};
 
 #[cfg(feature = "burn")]
 pub mod burn_euclidean;
