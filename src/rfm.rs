@@ -180,7 +180,7 @@ pub fn minibatch_ot_greedy_pairing(
 ///
 /// This keeps Sinkhorn's global coupling signal, but avoids the strict "use every column" constraint
 /// in the final assignment, which can otherwise force minibatch outliers to be used.
-pub(crate) fn minibatch_ot_selective_pairing(
+pub fn minibatch_ot_selective_pairing(
     x: &ArrayView2<f32>,
     y: &ArrayView2<f32>,
     reg: f32,
@@ -294,7 +294,7 @@ pub(crate) fn minibatch_ot_selective_pairing(
 }
 
 /// Fast minibatch pairing: greedy row-wise nearest neighbor on the Euclidean cost matrix.
-pub(crate) fn minibatch_rowwise_nearest_pairing(
+pub fn minibatch_rowwise_nearest_pairing(
     x: &ArrayView2<f32>,
     y: &ArrayView2<f32>,
 ) -> Result<Vec<usize>> {
@@ -348,7 +348,7 @@ pub(crate) fn minibatch_rowwise_nearest_pairing(
 /// This is a pragmatic stand-in for "partial OT" in minibatches: it avoids forcing every column
 /// to be used, which can create huge, misleading displacements when a minibatch contains a rare
 /// outlier target.
-pub(crate) fn minibatch_partial_rowwise_pairing(
+pub fn minibatch_partial_rowwise_pairing(
     x: &ArrayView2<f32>,
     y: &ArrayView2<f32>,
     keep_frac: f32,
@@ -436,7 +436,7 @@ pub(crate) fn minibatch_partial_rowwise_pairing(
 }
 
 /// Fast minibatch pairing: convert costs to weights via `exp(-cost / temp)` then greedy match.
-pub(crate) fn minibatch_exp_greedy_pairing(
+pub fn minibatch_exp_greedy_pairing(
     x: &ArrayView2<f32>,
     y: &ArrayView2<f32>,
     temp: f32,
