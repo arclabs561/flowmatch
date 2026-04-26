@@ -84,7 +84,7 @@ fn error_cosine_at_steps(method: OdeMethod, steps: usize) -> f64 {
 
 #[test]
 fn euler_first_order_on_cosine_ode() {
-    let steps = vec![20, 40, 80, 160, 320];
+    let steps = [20, 40, 80, 160, 320];
     let errors: Vec<f64> = steps
         .iter()
         .map(|&s| error_cosine_at_steps(OdeMethod::Euler, s))
@@ -107,7 +107,7 @@ fn euler_first_order_on_cosine_ode() {
 #[test]
 fn heun_second_order_on_cosine_ode() {
     // Keep step counts low to stay in the truncation-dominated regime (f32).
-    let steps = vec![5, 10, 20, 40, 80];
+    let steps = [5, 10, 20, 40, 80];
     let errors: Vec<f64> = steps
         .iter()
         .map(|&s| error_cosine_at_steps(OdeMethod::Heun, s))
