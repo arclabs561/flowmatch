@@ -288,16 +288,10 @@ fn main() {
     let heun_in = heun_results.iter().filter(|p| in_ball(p)).count();
 
     // (b) Average distance to nearest target.
-    let euler_avg: f64 = euler_results
-        .iter()
-        .map(nearest_target_dist)
-        .sum::<f64>()
-        / n_samples as f64;
-    let heun_avg: f64 = heun_results
-        .iter()
-        .map(nearest_target_dist)
-        .sum::<f64>()
-        / n_samples as f64;
+    let euler_avg: f64 =
+        euler_results.iter().map(nearest_target_dist).sum::<f64>() / n_samples as f64;
+    let heun_avg: f64 =
+        heun_results.iter().map(nearest_target_dist).sum::<f64>() / n_samples as f64;
 
     println!();
     println!("--- Euler ({ode_steps} steps) ---");
