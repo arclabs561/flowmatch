@@ -290,12 +290,12 @@ fn main() {
     // (b) Average distance to nearest target.
     let euler_avg: f64 = euler_results
         .iter()
-        .map(|p| nearest_target_dist(p))
+        .map(nearest_target_dist)
         .sum::<f64>()
         / n_samples as f64;
     let heun_avg: f64 = heun_results
         .iter()
-        .map(|p| nearest_target_dist(p))
+        .map(nearest_target_dist)
         .sum::<f64>()
         / n_samples as f64;
 
