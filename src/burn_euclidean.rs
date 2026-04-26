@@ -45,6 +45,7 @@ impl<B: Backend> BurnEuclideanCondMlp<B> {
     /// - `x_t`: `[batch, d]`
     /// - `x1`: `[batch, d]`
     /// - `t`: `[batch, 1]` (column vector)
+    ///
     /// Returns: `[batch, d]`.
     pub fn forward(&self, x_t: Tensor<B, 2>, x1: Tensor<B, 2>, t: Tensor<B, 2>) -> Tensor<B, 2> {
         // TODO: Avoid repeated concatenation allocations (use fused ops / views if/when available).
@@ -96,7 +97,7 @@ pub fn train_euclidean_fm_sgd(
     if batch_size == 0 {
         return Err(crate::Error::Domain("batch_size must be > 0"));
     }
-    if !(lr > 0.0) || !lr.is_finite() {
+    if !lr.is_finite() || lr <= 0.0 {
         return Err(crate::Error::Domain("lr must be finite and positive"));
     }
     use burn::tensor::Distribution;
