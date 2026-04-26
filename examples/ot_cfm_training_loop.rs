@@ -63,12 +63,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let targets = ot_cfm_training_step(&x0.view(), &x1.view(), &t, &ot_cfg)?;
 
         // Update field with SGD on each sample.
-        for i in 0..batch_size {
+        for (i, &t_i) in t.iter().enumerate().take(batch_size) {
             let xt_row = targets.x_t.row(i);
             let j = targets.coupling[i];
             let y_row = x1.row(j);
             let u_row = targets.u_t.row(i);
-            field.sgd_step(&xt_row, t[i], &y_row, &u_row, lr / batch_size as f32)?;
+            field.sgd_step(&xt_row, t_i, &y_row, &u_row, lr / batch_size as f32)?;
         }
 
         if step % 50 == 0 || step == steps - 1 {
