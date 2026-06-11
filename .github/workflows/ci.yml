@@ -19,10 +19,10 @@ jobs:
         run: cargo fmt --all --check
 
       - name: clippy
-        run: cargo clippy --all-targets -- -D warnings
+        run: cargo clippy --all-targets --all-features -- -D warnings
 
       - name: test
-        run: cargo test --all-targets
+        run: cargo test --all-targets --all-features
 
       - name: test (sheaf-evals)
         run: cargo test --all-targets --features sheaf-evals
