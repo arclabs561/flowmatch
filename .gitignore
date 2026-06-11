@@ -4,3 +4,4 @@ target/
 .claude/settings.local.json
 proptest-regressions/
 Cargo.lock
+/semver-checks/
