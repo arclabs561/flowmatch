@@ -77,7 +77,7 @@ Some generated samples (lat, lon):
 cargo run --release --example rfm_poincare_geodesic_ode --features riemannian
 ```
 
-See `examples/` for more, including discrete CTMC, two-moons, conditional 2D, Burn backend variants (`--features burn`), Riemannian Poincare disk (`--features riemannian`), and cluster/community evaluation (`--features sheaf-evals`).
+See [`examples/README.md`](examples/README.md) for the example map, including discrete CTMC, two-moons, conditional 2D, Burn backend variants (`--features burn`), Riemannian Poincare disk (`--features riemannian`), and cluster/community evaluation (`--features sheaf-evals`).
 
 ## What it provides
 
