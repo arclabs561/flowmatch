@@ -50,6 +50,7 @@ criterion = { version = "0.5", features = ["html_reports"] }
 petgraph = "0.6"
 hyperball = "0.1"
 rkhs = "0.2"
+infogeom = { version = "0.2.1", features = ["manifold"] }
 
 [[example]]
 name = "ode_comparison"
@@ -73,6 +74,11 @@ required-features = ["sheaf-evals"]
 [[example]]
 name = "riemannian_fm_poincare"
 path = "examples/riemannian_fm_poincare.rs"
+required-features = ["riemannian"]
+
+[[example]]
+name = "rfm_fisher_simplex"
+path = "examples/rfm_fisher_simplex.rs"
 required-features = ["riemannian"]
 
 [[example]]
@@ -101,4 +107,9 @@ required-features = ["sheaf-evals"]
 name = "rfm_usgs_leiden_exact_knn_e2e"
 path = "tests/rfm_usgs_leiden_exact_knn_e2e.rs"
 required-features = ["sheaf-evals"]
+
+[[test]]
+name = "fisher_flow_rfm"
+path = "tests/fisher_flow_rfm.rs"
+required-features = ["riemannian"]
 
