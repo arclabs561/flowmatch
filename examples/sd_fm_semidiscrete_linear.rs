@@ -42,8 +42,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let trained = train_sd_fm_semidiscrete_linear(&y.view(), &b.view(), &pot_cfg, &fm_cfg)?;
 
     let n_samp = 64usize;
-    let (xs, js) = trained.sample(n_samp, 123, fm_cfg.sample_steps)?;
+    let (x0s, xs, js) = trained.sample_with_x0(n_samp, 123, fm_cfg.sample_steps)?;
     let mse = common::mean_sq_to_assigned_y(&xs, &js, &trained.y);
+    // Anchor the printed MSE against the untrained x0 ~ N(0, I) baseline (same
+    // assigned targets). Integrating through the learned field must land
+    // samples closer to their target than the raw noise was, otherwise a silent
+    // training regression would still exit 0.
+    let baseline_mse = common::mean_sq_to_assigned_y(&x0s, &js, &trained.y);
 
     println!("n={n} d={d}");
     println!(
@@ -54,7 +59,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "fm_cfg:  steps={} batch={} lr={} seed={} euler_steps={}",
         fm_cfg.steps, fm_cfg.batch_size, fm_cfg.lr, fm_cfg.seed, fm_cfg.sample_steps
     );
-    println!("sample_mse_to_assigned_y = {mse:.4}");
+    println!("sample_mse_to_assigned_y = {mse:.4}  (x0 baseline = {baseline_mse:.4})");
     println!();
 
     for i in 0..8.min(n_samp) {
@@ -69,6 +74,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             trained.y[[j, 2]],
         );
     }
+
+    assert!(
+        mse < baseline_mse,
+        "SD-FM training did not improve over the x0 baseline: \
+         sample_mse={mse:.4} >= baseline={baseline_mse:.4}"
+    );
 
     Ok(())
 }
