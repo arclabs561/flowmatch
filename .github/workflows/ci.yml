@@ -30,6 +30,14 @@ jobs:
       - name: check (burn)
         run: cargo check --all-targets --features burn
 
+      - name: run example assertions
+        run: |
+          cargo run --example rfm_minibatch_ot_linear --release
+          cargo run --example sd_fm_semidiscrete_linear --release
+          cargo run --example rfm_fisher_simplex --features riemannian --release
+          cargo run --example burn_rfm_minibatch_ot_linear --features burn --release
+          cargo run --example burn_sd_fm_semidiscrete_linear --features burn --release
+
       - name: Semver check
         if: github.event_name == 'pull_request'
         run: |
