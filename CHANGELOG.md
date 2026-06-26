@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.1.8] - 2026-06-26
+
 ### Added
 
 - `fynch_bregman_energy` example showing `fynch::Shannon` and
