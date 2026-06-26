@@ -1,6 +1,6 @@
 [package]
 name = "flowmatch"
-version = "0.1.6"
+version = "0.1.7"
 edition = "2021"
 rust-version = "1.80"
 license = "MIT OR Apache-2.0"
@@ -112,4 +112,3 @@ required-features = ["sheaf-evals"]
 name = "fisher_flow_rfm"
 path = "tests/fisher_flow_rfm.rs"
 required-features = ["riemannian"]
-

@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.1.7]
+
 ### Added
 
 - `energy::bregman_energy_target`,
