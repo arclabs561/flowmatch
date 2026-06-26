@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Added
+
+- `fynch_bregman_energy` example showing `fynch::Shannon` and
+  `fynch::SquaredL2` as `logp::BregmanGenerator` energy objectives.
+
 ## [0.1.7]
 
 ### Added

@@ -51,6 +51,7 @@ petgraph = "0.6"
 hyperball = "0.1"
 rkhs = "0.2"
 infogeom = { version = "0.2.1", features = ["manifold"] }
+fynch = { version = "0.2.2", features = ["logp"] }
 
 [[example]]
 name = "ode_comparison"
@@ -84,6 +85,10 @@ required-features = ["riemannian"]
 [[example]]
 name = "mmd_flow_eval"
 path = "examples/mmd_flow_eval.rs"
+
+[[example]]
+name = "fynch_bregman_energy"
+path = "examples/fynch_bregman_energy.rs"
 
 [[bench]]
 name = "realdata_torsions"

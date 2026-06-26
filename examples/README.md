@@ -9,6 +9,7 @@
 | Check ODE solver error on a known trajectory | `ode_comparison` |
 | Train on a 2D multimodal target | `rfm_two_moons` |
 | Add class conditioning | `rfm_conditional_2d` |
+| Use Fenchel-Young regularizers as Bregman energies | `fynch_bregman_energy` |
 | Inspect the low-level OT-CFM training step | `ot_cfm_training_loop` |
 | Evaluate samples with MMD | `mmd_flow_eval` |
 | See discrete CTMC path evolution | `discrete_ctmc_path_evolution` |
@@ -19,6 +20,7 @@ cargo run --release --example rfm_minibatch_ot_linear
 cargo run --release --example ode_comparison
 cargo run --release --example rfm_two_moons
 cargo run --release --example rfm_conditional_2d
+cargo run --release --example fynch_bregman_energy
 cargo run --release --example ot_cfm_training_loop
 cargo run --release --example mmd_flow_eval
 cargo run --release --example discrete_ctmc_path_evolution
