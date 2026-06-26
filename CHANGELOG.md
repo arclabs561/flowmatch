@@ -1,5 +1,14 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+
+- `energy::bregman_energy_target`,
+  `energy::bregman_energy_matching_target`, and
+  `energy::bregman_energy_gradient` for reusing `logp::BregmanGenerator`
+  values as flow-matching energy objectives.
+
 ## [0.1.6]
 
 ### Added

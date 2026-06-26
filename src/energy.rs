@@ -18,6 +18,10 @@
 use crate::{Error, Result};
 use ndarray::{Array1, ArrayView1};
 
+fn map_logp_error(_: logp::Error) -> Error {
+    Error::Domain("logp Bregman generator failed")
+}
+
 /// Configuration for energy matching.
 #[derive(Debug, Clone)]
 pub struct EnergyMatchingConfig {
@@ -83,6 +87,66 @@ pub fn energy_matching_target(
     }
 
     Ok((-0.5 * dist_sq / sigma_sq as f64) as f32)
+}
+
+/// Compute a Bregman energy target around a path center.
+///
+/// The target is `-D_F(x, center) / sigma^2`, where `D_F` is supplied by
+/// [`logp::BregmanGenerator`]. With [`logp::SquaredL2`], this is identical to
+/// the Gaussian-path target from [`energy_matching_target`].
+///
+/// # Errors
+///
+/// Returns [`Error::Shape`] if `x` and `center` have different lengths.
+/// Returns [`Error::Domain`] if `sigma` is not positive/finite or if `logp`
+/// rejects the Bregman generator inputs.
+pub fn bregman_energy_target(
+    gen: &impl logp::BregmanGenerator,
+    x: &ArrayView1<f32>,
+    center: &ArrayView1<f32>,
+    sigma: f32,
+) -> Result<f32> {
+    if x.len() != center.len() {
+        return Err(Error::Shape("x and center must have the same length"));
+    }
+    validate_sigma(sigma)?;
+
+    let x64: Vec<f64> = x.iter().map(|&v| v as f64).collect();
+    let center64: Vec<f64> = center.iter().map(|&v| v as f64).collect();
+    let divergence = logp::bregman_divergence(gen, &x64, &center64).map_err(map_logp_error)?;
+    Ok((-divergence / (sigma as f64 * sigma as f64)) as f32)
+}
+
+/// Compute a Bregman energy target for the linear interpolation center.
+///
+/// The center is `mu_t = (1 - t) * x0 + t * x1`, matching
+/// [`energy_matching_target`]. This function only changes the geometry of the
+/// energy from squared L2 to the supplied Bregman generator.
+///
+/// # Errors
+///
+/// Returns [`Error::Shape`] if `x`, `x0`, and `x1` have different lengths.
+/// Returns [`Error::Domain`] if `t` is outside `[0, 1]`, `sigma` is invalid,
+/// or `logp` rejects the Bregman generator inputs.
+pub fn bregman_energy_matching_target(
+    gen: &impl logp::BregmanGenerator,
+    x: &ArrayView1<f32>,
+    x0: &ArrayView1<f32>,
+    x1: &ArrayView1<f32>,
+    t: f32,
+    config: &EnergyMatchingConfig,
+) -> Result<f32> {
+    let d = x0.len();
+    if x1.len() != d || x.len() != d {
+        return Err(Error::Shape("x, x0, and x1 must have the same length"));
+    }
+    if !(0.0..=1.0).contains(&t) {
+        return Err(Error::Domain("t must be in [0, 1]"));
+    }
+    validate_sigma(config.sigma)?;
+
+    let center = Array1::from_shape_fn(d, |i| (1.0 - t) * x0[i] + t * x1[i]);
+    bregman_energy_target(gen, x, &center.view(), config.sigma)
 }
 
 /// MSE loss between predicted and target energy values.
@@ -156,6 +220,44 @@ pub fn energy_gradient(
         grad[i] = -(x[i] - mu_i) / sigma_sq;
     }
     Ok(grad)
+}
+
+/// Compute the analytical gradient of a Bregman energy target.
+///
+/// For `E(x) = -D_F(x, center) / sigma^2`, the gradient is
+/// `-(grad F(x) - grad F(center)) / sigma^2`.
+///
+/// # Errors
+///
+/// Returns [`Error::Shape`] if `x` and `center` have different lengths.
+/// Returns [`Error::Domain`] if `sigma` is not positive/finite or if `logp`
+/// rejects the Bregman generator inputs.
+pub fn bregman_energy_gradient(
+    gen: &impl logp::BregmanGenerator,
+    x: &ArrayView1<f32>,
+    center: &ArrayView1<f32>,
+    sigma: f32,
+) -> Result<Array1<f32>> {
+    if x.len() != center.len() {
+        return Err(Error::Shape("x and center must have the same length"));
+    }
+    validate_sigma(sigma)?;
+
+    let x64: Vec<f64> = x.iter().map(|&v| v as f64).collect();
+    let center64: Vec<f64> = center.iter().map(|&v| v as f64).collect();
+    let mut grad_x = vec![0.0; x64.len()];
+    let mut grad_center = vec![0.0; center64.len()];
+    gen.grad_into(&x64, &mut grad_x).map_err(map_logp_error)?;
+    gen.grad_into(&center64, &mut grad_center)
+        .map_err(map_logp_error)?;
+
+    let sigma_sq = sigma as f64 * sigma as f64;
+    Ok(Array1::from_iter(
+        grad_x
+            .into_iter()
+            .zip(grad_center)
+            .map(|(gx, gc)| (-(gx - gc) / sigma_sq) as f32),
+    ))
 }
 
 fn validate_sigma(sigma: f32) -> Result<()> {
@@ -266,6 +368,58 @@ mod tests {
                 v[i]
             );
         }
+    }
+
+    #[test]
+    fn bregman_squared_l2_matches_gaussian_energy_target() {
+        let x0 = arr(&[0.0, 0.0]);
+        let x1 = arr(&[2.0, 4.0]);
+        let x = arr(&[1.1, 1.8]);
+        let t = 0.5;
+        let config = EnergyMatchingConfig {
+            sigma: 0.5,
+            num_samples: 1,
+        };
+
+        let gaussian =
+            energy_matching_target(&x.view(), &x0.view(), &x1.view(), t, &config).unwrap();
+        let bregman = bregman_energy_matching_target(
+            &logp::SquaredL2,
+            &x.view(),
+            &x0.view(),
+            &x1.view(),
+            t,
+            &config,
+        )
+        .unwrap();
+
+        assert!((bregman - gaussian).abs() < 1e-6);
+    }
+
+    #[test]
+    fn bregman_squared_l2_gradient_matches_gaussian_energy_gradient() {
+        let center = arr(&[1.0, 2.0]);
+        let x = arr(&[1.1, 1.8]);
+        let sigma = 0.5;
+
+        let bregman =
+            bregman_energy_gradient(&logp::SquaredL2, &x.view(), &center.view(), sigma).unwrap();
+
+        let x0 = center.clone();
+        let x1 = center.clone();
+        let config = EnergyMatchingConfig {
+            sigma,
+            num_samples: 1,
+        };
+        let gaussian = energy_gradient(&x.view(), &x0.view(), &x1.view(), 0.0, &config).unwrap();
+
+        assert!(
+            bregman
+                .iter()
+                .zip(gaussian.iter())
+                .all(|(a, b)| (a - b).abs() < 1e-6),
+            "Bregman gradient {bregman:?} should match Gaussian gradient {gaussian:?}"
+        );
     }
 
     #[test]
