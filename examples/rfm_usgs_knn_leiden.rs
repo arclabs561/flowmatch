@@ -3,11 +3,11 @@
 //! - Train RFM on real USGS earthquake locations (sphere in R^3).
 //! - Sample points from the learned flow.
 //! - Build a kNN graph using `sheaf`'s `knn_graph_with_config` (HNSW via `vicinity`).
-//! - Run Leiden community detection and compare **community-size distributions**
+//! - Run Leiden community detection and compare community-size distributions
 //!   against the real-data graph via JS divergence.
 //!
-//! This is meant as a "how the engine composes" example, not a perfectly deterministic test:
-//! HNSW construction involves randomness internally.
+//! HNSW construction involves randomness internally, so this is not a
+//! deterministic test.
 //!
 //! Run:
 //! ```bash

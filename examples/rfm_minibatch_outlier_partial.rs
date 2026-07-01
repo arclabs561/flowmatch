@@ -1,10 +1,8 @@
-//! Demonstrate minibatch OT "outlier forcing" and a partial pairing fix.
+//! Minibatch pairing behavior with a distant target outlier.
 //!
-//! In full one-to-one pairing, every target column must be used. If a minibatch contains a rare
-//! outlier target, some source sample will be forced to match it, creating a huge displacement.
-//!
-//! Partial pairing (one-to-one only for the easiest rows, then NN fallback for the rest) avoids
-//! forcing the outlier to be used.
+//! One target column is placed far from the source batch. The output reports
+//! whether each pairing strategy selects that column and the maximum pair
+//! distance it creates.
 //!
 //! Run:
 //! ```bash

@@ -1,12 +1,7 @@
-//! Rectified flow matching on **real geospatial data** (earthquakes on the sphere).
+//! Rectified flow matching on earthquake locations.
 //!
-//! This example is motivated by "Flow Matching on General Geometries" style benchmarks where
-//! *sphere-valued* data (lat/lon) is the native object. We stay within `flowmatch`'s current
-//! constraints (a tiny linear conditional field in Euclidean space) but:
-//!
-//! - we use a **real dataset** (USGS earthquake catalog),
-//! - we evaluate with a **distributional metric** (entropic OT cost to a weighted support),
-//! - we keep determinism explicit (seeded).
+//! USGS latitude/longitude data is embedded in R^3, projected back to S^2
+//! after sampling, and evaluated by entropic OT cost to the weighted support.
 //!
 //! Data provenance:
 //! - Source: USGS Earthquake Catalog API (CSV)

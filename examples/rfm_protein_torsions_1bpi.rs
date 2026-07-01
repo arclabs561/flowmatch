@@ -1,17 +1,12 @@
-//! Rectified flow matching on **real protein torsion data** (a torus-shaped domain).
+//! Rectified flow matching on protein torsion data.
 //!
-//! Motivation (from "Flow Matching on General Geometries" and FoldFlow-style eval culture):
-//! torsion angles live on a product of circles \(S^1 \times S^1\) (a 2D torus), and *distribution*
-//! matching should be measurable (not just "the code runs").
-//!
-//! We stay within `flowmatch`'s current primitive (linear conditional field + minibatch OT pairing),
-//! but we use **real phi/psi** angles extracted from a PDB structure and score matching via a simple,
-//! interpretable distributional metric: **JS divergence** between Ramachandran histograms
-//! (computed via the ecosystem `logp` crate through `flowmatch::metrics`).
+//! Torsion angles live on a product of circles. This example embeds phi/psi
+//! angles from PDB 1BPI in R^4, trains the linear RFM primitive, and reports JS
+//! divergence between observed and generated Ramachandran histograms.
 //!
 //! Data provenance:
 //! - PDB: `1BPI` chain A (BPTI). Source: RCSB PDB (`https://files.rcsb.org/download/1BPI.pdb`)
-//! - This repo vendors a tiny derived artifact: phi/psi angles (radians) computed from backbone atoms.
+//! - Checked-in derived artifact: phi/psi angles (radians) from backbone atoms.
 //!
 //! Run:
 //! ```bash

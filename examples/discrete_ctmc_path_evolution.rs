@@ -5,10 +5,8 @@
 //! state x_0 toward a target state x_1, with the transition rate controlled
 //! by an interpolation schedule kappa(t).
 //!
-//! This example shows:
-//! 1. How the conditional probability path p_t(x | x_0, x_1) evolves for each schedule.
-//! 2. How the conditional rate matrix R_t concentrates flow on the x_0 -> x_1 transition.
-//! 3. How forward Euler integration of dp/dt = p R_t recovers the analytical path.
+//! Prints the conditional probability path, selected rate-matrix entries, and
+//! Euler error against the analytical path.
 //!
 //! Run: cargo run -p flowmatch --example discrete_ctmc_path_evolution
 
@@ -124,7 +122,7 @@ fn main() {
         );
     }
 
-    println!("\nKey insight from Gat et al. (2024):");
+    println!("\nEndpoint-rate note:");
     println!("  The cosine-squared schedule has kappa'(0) = kappa'(1) = 0, avoiding");
     println!("  the 1/(1-t) singularity in the rate matrix near t=1. The linear schedule");
     println!("  has constant kappa'=1, causing the rate to blow up as t -> 1.");

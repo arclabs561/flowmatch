@@ -2,11 +2,10 @@
 //!
 //! MMD from rkhs provides a kernel-based two-sample test: does the generated
 //! distribution match the target? This complements Wasserstein distance
-//! (already used in flowmatch) -- MMD is faster and works well in high
-//! dimensions where OT becomes expensive.
+//! with a metric that is cheap for this small synthetic support.
 //!
-//! Demonstrates: train a semidiscrete flow, sample from it, then use
-//! MMD + permutation test to verify distributional match.
+//! The example trains a semidiscrete flow, samples from it, and reports MMD
+//! with a permutation-test p-value.
 //!
 //! Run: cargo run --example mmd_flow_eval
 
@@ -85,8 +84,8 @@ fn main() {
     println!("\nPermutation test (bw=2.0, 500 permutations):");
     println!("  MMD^2 = {mmd_val:.6}, p-value = {p_value:.4}");
     if p_value > 0.05 {
-        println!("  -> Cannot reject H0: generated ~ target (flow learned the distribution)");
+        println!("  decision at alpha=0.05: do not reject equal-distribution null");
     } else {
-        println!("  -> Reject H0: distributions differ (flow may need more training)");
+        println!("  decision at alpha=0.05: reject equal-distribution null");
     }
 }

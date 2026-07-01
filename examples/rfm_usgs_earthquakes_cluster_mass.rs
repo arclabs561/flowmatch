@@ -1,13 +1,8 @@
-//! RFM on **real geodata**, evaluated via **cluster-mass matching** (uses `sheaf`).
+//! RFM on earthquake locations, evaluated by cluster-mass matching.
 //!
-//! Uses OT-CFM minibatch coupling (Tong et al., 2023) for straighter flow trajectories.
-//!
-//! This goes "deeper" than a single OT/JS scalar on raw points by checking whether the model
-//! reproduces **mesoscale structure**:
-//! - cluster the *real* earthquake points with `sheaf::Kmeans`,
-//! - compute the (magnitude-weighted) **cluster mass distribution**,
-//! - assign generated samples to the same centroids and compare the induced cluster-mass
-//!   distribution with **Jensen--Shannon divergence** (via `logp` through `flowmatch::metrics`).
+//! The example clusters the observed earthquake support with `sheaf::Kmeans`,
+//! computes magnitude-weighted cluster masses, assigns generated samples to
+//! the same centroids, and compares the induced masses with JS divergence.
 //!
 //! Run:
 //! ```bash

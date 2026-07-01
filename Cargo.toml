@@ -80,9 +80,24 @@ path = "examples/riemannian_fm_poincare.rs"
 required-features = ["riemannian"]
 
 [[example]]
+name = "rfm_poincare_geodesic_ode"
+path = "examples/rfm_poincare_geodesic_ode.rs"
+required-features = ["riemannian"]
+
+[[example]]
 name = "rfm_fisher_simplex"
 path = "examples/rfm_fisher_simplex.rs"
 required-features = ["riemannian"]
+
+[[example]]
+name = "burn_sd_fm_semidiscrete_linear"
+path = "examples/burn_sd_fm_semidiscrete_linear.rs"
+required-features = ["burn"]
+
+[[example]]
+name = "burn_rfm_minibatch_ot_linear"
+path = "examples/burn_rfm_minibatch_ot_linear.rs"
+required-features = ["burn"]
 
 [[example]]
 name = "mmd_flow_eval"

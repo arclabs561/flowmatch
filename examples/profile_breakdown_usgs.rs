@@ -138,7 +138,7 @@ fn main() -> Result<()> {
     println!("- load_time: {:?}", load_time);
     println!("- train_time: {:?}", train_time);
     println!(
-        "- accounted_total: {:?} (should be close to train_time)",
+        "- accounted_total: {:?} (compare with train_time)",
         timings.accounted_total()
     );
     timings.print();

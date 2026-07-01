@@ -4,7 +4,7 @@
 [![Documentation](https://docs.rs/flowmatch/badge.svg)](https://docs.rs/flowmatch)
 [![CI](https://github.com/arclabs561/flowmatch/actions/workflows/ci.yml/badge.svg)](https://github.com/arclabs561/flowmatch/actions/workflows/ci.yml)
 
-Flow matching.
+Flow matching primitives.
 
 ## Problem
 
@@ -24,17 +24,17 @@ cargo run --release --example sd_fm_semidiscrete_linear
 n=16 d=8
 pot_cfg: steps=2000 batch=1024 seed=7
 fm_cfg:  steps=800 batch=256 lr=0.008 seed=9 euler_steps=40
-sample_mse_to_assigned_y = 0.0367
+sample_mse_to_assigned_y = 0.0367  (x0 baseline = 0.7818)
 ```
 
-**Straighter trajectories via minibatch OT**. Rectified flow matching [7] uses Sinkhorn coupling within each minibatch so that noise-to-data paths cross less, reducing integration error:
+**Minibatch OT coupling**. Rectified flow matching [7] uses a coupling between base and target samples. This example uses Sinkhorn pairing inside each minibatch and reports assigned-target MSE after ODE sampling:
 
 ```bash
 cargo run --release --example rfm_minibatch_ot_linear
 ```
 
 ```text
-sample_mse_to_assigned_y = 0.0684
+sample_mse_to_assigned_y = 0.0684  (x0 baseline = 1.4397)
 ```
 
 **Protein torsion angles on a torus**. Backbone phi/psi angles live on S^1 x S^1. This example trains on real angles from PDB 1BPI (BPTI), then measures sample quality by JS divergence between generated and observed Ramachandran histograms:
@@ -65,10 +65,10 @@ OT cost (lower is better):
 - ratio trained/baseline: 0.482
 
 Some generated samples (lat, lon):
-   0: lat=  12.63°, lon= -104.96°
-   1: lat=  58.20°, lon=  169.16°
-   2: lat= -13.11°, lon= -167.62°
-   3: lat= -35.47°, lon=  -79.28°
+   0: lat=  12.63, lon= -104.96
+   1: lat=  58.20, lon=  169.16
+   2: lat= -13.11, lon= -167.62
+   3: lat= -35.47, lon=  -79.28
 ```
 
 **Geodesics on the Poincare ball**. Riemannian ODE integration on hyperbolic space, using the `skel::Manifold` trait implemented by `hyperball`:
@@ -98,10 +98,10 @@ MSRV: 1.80.
 ## Tests
 
 ```bash
-cargo test -p flowmatch                        # 85 tests
-cargo test -p flowmatch --features burn        # + burn backend tests
-cargo test -p flowmatch --features riemannian  # + Riemannian manifold tests
-cargo test -p flowmatch --features sheaf-evals # + cluster/community eval tests
+cargo test -p flowmatch
+cargo test -p flowmatch --features burn
+cargo test -p flowmatch --features riemannian
+cargo test -p flowmatch --features sheaf-evals
 ```
 
 ## References

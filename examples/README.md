@@ -45,11 +45,11 @@ cargo run --release --example rfm_usgs_solver_nfe_tradeoff
 cargo run --release --example rfm_textish_tokens
 ```
 
-## Failure modes and diagnostics
+## Pairing diagnostics
 
 | Example | What it checks |
 |---|---|
-| `rfm_minibatch_outlier_partial` | Full minibatch OT can force a source point onto a rare outlier; partial pairing reduces that displacement |
+| `rfm_minibatch_outlier_partial` | One-to-one and selective pairings when one target is a distant outlier |
 | `profile_breakdown_usgs` | Time spent in sampling, pairing, SGD, and evaluation |
 | `profile_breakdown_torsions` | Same timing split on torsion data |
 

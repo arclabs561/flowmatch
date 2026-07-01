@@ -1,15 +1,8 @@
-//! Full pipeline report for the USGS sphere-ish demo.
+//! Full-pipeline report for the USGS sphere example.
 //!
-//! Goal: show the "engine" working end-to-end:
-//! - flowmatch training (RFM + minibatch OT)
-//! - sampling
-//! - multiple evaluation views:
-//!   - OT cost to weighted support (wass)
-//!   - two-sample sliced Wasserstein (sheaf + wass)
-//!   - cluster-mass JS (sheaf KMeans + logp)
-//!   - graph+community JS (exact kNN + sheaf Leiden; deterministic)
-//!   - optional: kNN via HNSW (sheaf + vicinity) + Leiden (non-deterministic build)
-//! - timing breakdown per stage
+//! Trains RFM on the checked-in USGS sample, draws generated points, reports
+//! OT and graph/community metrics, and prints a timing breakdown. The exact
+//! kNN path is deterministic; the optional HNSW path is not.
 //!
 //! Run:
 //! ```bash

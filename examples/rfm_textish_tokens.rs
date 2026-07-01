@@ -1,10 +1,7 @@
 //! RFM minibatch-OT demo on "text-ish tokens".
 //!
-//! This is meant to be less toy than random vectors:
-//! - build token embeddings (char n-grams)
-//! - build TF-IDF-ish token weights from two small documents
-//! - treat doc-B tokens as a weighted discrete support
-//! - train a flow to generate token embeddings with that weight profile
+//! Builds char-ngram token embeddings, assigns two-document TF-IDF-style
+//! weights, and trains a flow against the weighted support for document B.
 
 use flowmatch::metrics::ot_cost_samples_to_weighted_support;
 use flowmatch::sd_fm::TimestepSchedule;
