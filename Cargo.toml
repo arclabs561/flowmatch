@@ -17,7 +17,7 @@ categories = ["science", "mathematics"]
 [features]
 # Default build stays `ndarray`-only; `burn` is an opt-in training backend path.
 default = []
-sheaf-evals = ["dep:sheaf"]
+sheaf-evals = ["dep:serde", "dep:serde_json", "dep:sheaf"]
 ## Enable experimental hyperbolic manifold ODE tests (requires compatible `hyperball` + `skel` APIs).
 riemannian = ["dep:skel"]
 burn = [
@@ -36,6 +36,8 @@ rand_chacha = "0.9"
 rand_distr = "0.5"
 logp = "0.2"
 wass = "0.1.4"
+serde = { version = "1.0", features = ["derive"], optional = true }
+serde_json = { version = "1.0", optional = true }
 skel = { version = "0.1", optional = true }
 sheaf = { version = "0.1.4", default-features = false, features = ["cluster", "community", "knn-graph", "metrics", "wass"], optional = true }
 burn-core = { version = "0.20.0", default-features = false, features = ["std"], optional = true }
