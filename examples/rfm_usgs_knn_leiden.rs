@@ -1,8 +1,8 @@
-//! Full-pipeline structure demo (flowmatch + wass + sheaf + jin):
+//! Full-pipeline structure demo (flowmatch + wass + sheaf + vicinity):
 //!
 //! - Train RFM on real USGS earthquake locations (sphere in R^3).
 //! - Sample points from the learned flow.
-//! - Build a kNN graph using `sheaf`'s `knn_graph_with_config` (HNSW via `jin`).
+//! - Build a kNN graph using `sheaf`'s `knn_graph_with_config` (HNSW via `vicinity`).
 //! - Run Leiden community detection and compare **community-size distributions**
 //!   against the real-data graph via JS divergence.
 //!

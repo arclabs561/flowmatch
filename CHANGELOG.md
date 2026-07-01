@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Added
+
+- `rfm_usgs_full_pipeline_report` can now write a JSON report when
+  `FLOWMATCH_REPORT_OUT` is set, recording configs, seeds, metrics, and timing
+  breakdowns.
+
 ## [0.1.8] - 2026-06-26
 
 ### Added

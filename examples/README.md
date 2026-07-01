@@ -77,6 +77,14 @@ cargo run --release --features sheaf-evals --example rfm_usgs_knn_leiden
 cargo run --release --features sheaf-evals --example rfm_usgs_full_pipeline_report
 ```
 
+`rfm_usgs_full_pipeline_report` also writes a structured JSON report when
+`FLOWMATCH_REPORT_OUT` is set:
+
+```sh
+FLOWMATCH_REPORT_OUT=target/flowmatch-usgs-report.json \
+  cargo run --release --features sheaf-evals --example rfm_usgs_full_pipeline_report
+```
+
 ## Shared data loaders
 
 `examples/common/` holds the checked-in torsion, USGS, and text-token helpers used by the examples above. They are example-only utilities, not public API.
