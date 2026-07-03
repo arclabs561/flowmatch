@@ -8,7 +8,7 @@ Flow matching primitives.
 
 ## Problem
 
-You have a set of target points -- protein backbone angles, earthquake epicenters, token embeddings -- and want to train a vector field that transforms Gaussian noise into samples from the same distribution. Flow matching [1] does this by regressing a conditional vector field along straight (or geodesic) interpolation paths, then sampling via ODE integration.
+You have a set of target points (protein backbone angles, earthquake epicenters, token embeddings) and want to train a vector field that transforms Gaussian noise into samples from the same distribution. Flow matching [1] does this by regressing a conditional vector field along straight (or geodesic) interpolation paths, then sampling via ODE integration.
 
 This library provides the training loop, OT-based coupling, ODE integration, and evaluation metrics. It works on flat spaces and on Riemannian manifolds.
 
@@ -107,12 +107,12 @@ cargo test -p flowmatch --features sheaf-evals
 ## References
 
 1. Lipman et al., [Flow Matching for Generative Modeling](https://arxiv.org/abs/2210.02747) (2022)
-2. Lipman et al., [Flow Matching Guide and Code](https://arxiv.org/abs/2412.06264) (2024) -- comprehensive tutorial
-3. Gat et al., [Discrete Flow Matching](https://proceedings.neurips.cc/paper_files/paper/2024/hash/8a2a3efb0b8e1b8cbd7c69bda6a4d2df-Abstract-Conference.html) (NeurIPS 2024) -- CTMC-based discrete FM
+2. Lipman et al., [Flow Matching Guide and Code](https://arxiv.org/abs/2412.06264) (2024). Tutorial and code guide
+3. Gat et al., [Discrete Flow Matching](https://proceedings.neurips.cc/paper_files/paper/2024/hash/8a2a3efb0b8e1b8cbd7c69bda6a4d2df-Abstract-Conference.html) (NeurIPS 2024). CTMC-based discrete FM
 4. Chen & Lipman, [Riemannian Flow Matching on General Geometries](https://arxiv.org/abs/2302.03660) (2023)
-5. de Kruiff et al., [Pullback Flow Matching on Data Manifolds](https://arxiv.org/abs/2410.04543) (2024) -- FM on implicit manifolds without closed-form exp/log maps
-6. Sherry & Smets, [Flow Matching on Lie Groups](https://arxiv.org/abs/2505.08393) (2025) -- specialization to SO(3) and SE(3)
-7. Liu et al., [Flow Straight and Fast: Learning to Generate and Transfer Data with Rectified Flow](https://arxiv.org/abs/2209.03003) (2022) -- rectified flow
+5. de Kruiff et al., [Pullback Flow Matching on Data Manifolds](https://arxiv.org/abs/2410.04543) (2024). FM on implicit manifolds without closed-form exp/log maps
+6. Sherry & Smets, [Flow Matching on Lie Groups](https://arxiv.org/abs/2505.08393) (2025). Specialization to SO(3) and SE(3)
+7. Liu et al., [Flow Straight and Fast: Learning to Generate and Transfer Data with Rectified Flow](https://arxiv.org/abs/2209.03003) (2022). Rectified flow
 
 ## License
 
