@@ -2,11 +2,17 @@
 
 ## [Unreleased]
 
+## [0.1.9] - 2026-07-05
+
 ### Added
 
 - `rfm_usgs_full_pipeline_report` can now write a JSON report when
   `FLOWMATCH_REPORT_OUT` is set, recording configs, seeds, metrics, and timing
   breakdowns.
+
+### Changed
+
+- Updated the optional `sheaf-evals` dependency to sheaf 0.1.9.
 
 ## [0.1.8] - 2026-06-26
 
