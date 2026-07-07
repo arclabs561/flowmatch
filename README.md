@@ -2,15 +2,15 @@
 
 [![crates.io](https://img.shields.io/crates/v/flowmatch.svg)](https://crates.io/crates/flowmatch)
 [![Documentation](https://docs.rs/flowmatch/badge.svg)](https://docs.rs/flowmatch)
-[![CI](https://github.com/arclabs561/flowmatch/actions/workflows/ci.yml/badge.svg)](https://github.com/arclabs561/flowmatch/actions/workflows/ci.yml)
 
-Flow matching primitives.
+Flow matching.
 
 ## Problem
 
 You have a set of target points (protein backbone angles, earthquake epicenters, token embeddings) and want to train a vector field that transforms Gaussian noise into samples from the same distribution. Flow matching [1] does this by regressing a conditional vector field along straight (or geodesic) interpolation paths, then sampling via ODE integration.
 
-This library provides the training loop, OT-based coupling, ODE integration, and evaluation metrics. It works on flat spaces and on Riemannian manifolds.
+`flowmatch` provides the training loop, OT-based coupling, ODE integration,
+and evaluation metrics. It works on flat spaces and Riemannian manifolds.
 
 ## Examples
 
