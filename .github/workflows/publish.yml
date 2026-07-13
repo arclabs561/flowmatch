@@ -21,12 +21,16 @@ jobs:
     steps:
       - name: Guard
         run: |
-          if [ "${{ inputs.confirm }}" != "publish" ]; then
+          if [ "${INPUTS_CONFIRM}" != "publish" ]; then
             echo "Refusing to publish: set workflow input confirm=publish"
             exit 1
           fi
+        env:
+          INPUTS_CONFIRM: ${{ inputs.confirm }}
 
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
 
