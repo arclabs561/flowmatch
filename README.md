@@ -20,6 +20,8 @@ and evaluation metrics. It works on flat spaces and Riemannian manifolds.
 cargo run --release --example sd_fm_semidiscrete_linear
 ```
 
+Illustrative fixed-seed output:
+
 ```text
 n=16 d=8
 pot_cfg: steps=2000 batch=1024 seed=7
@@ -33,6 +35,8 @@ sample_mse_to_assigned_y = 0.0367  (x0 baseline = 0.7818)
 cargo run --release --example rfm_minibatch_ot_linear
 ```
 
+Illustrative fixed-seed output:
+
 ```text
 sample_mse_to_assigned_y = 0.0684  (x0 baseline = 1.4397)
 ```
@@ -42,6 +46,8 @@ sample_mse_to_assigned_y = 0.0684  (x0 baseline = 1.4397)
 ```bash
 cargo run --release --example rfm_protein_torsions_1bpi
 ```
+
+Illustrative fixed-seed output:
 
 ```text
 PDB 1BPI φ/ψ (n=56) as a torus via R^4 embedding
@@ -56,6 +62,8 @@ Ramachandran histogram JS divergence (lower is better):
 ```bash
 cargo run --release --example rfm_usgs_earthquakes_sphere
 ```
+
+Illustrative fixed-seed output:
 
 ```text
 USGS earthquakes (n=50), embedding=R^3 with S^2 projection
