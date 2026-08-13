@@ -18,6 +18,15 @@
 
 use ndarray::{Array1, ArrayView1};
 
+const VELOCITY_SHAPE_ERROR: &str = "velocity must have the same length as the state";
+
+fn validate_velocity_len(velocity_len: usize, state_len: usize) -> crate::Result<()> {
+    if velocity_len != state_len {
+        return Err(crate::Error::Shape(VELOCITY_SHAPE_ERROR));
+    }
+    Ok(())
+}
+
 /// Fixed-step ODE method.
 ///
 /// In flow matching, learned velocity fields are generally not constant along
@@ -62,6 +71,7 @@ pub fn integrate_fixed(
         OdeMethod::Euler => {
             for _ in 0..steps {
                 let v = f(&x.view(), t)?;
+                validate_velocity_len(v.len(), x.len())?;
                 // x += dt * v
                 for i in 0..x.len() {
                     x[i] += dt * v[i];
@@ -72,6 +82,7 @@ pub fn integrate_fixed(
         OdeMethod::Heun => {
             for _ in 0..steps {
                 let v0 = f(&x.view(), t)?;
+                validate_velocity_len(v0.len(), x.len())?;
 
                 // predictor
                 let mut x_pred = x.clone();
@@ -81,6 +92,7 @@ pub fn integrate_fixed(
 
                 // corrector
                 let v1 = f(&x_pred.view(), t + dt)?;
+                validate_velocity_len(v1.len(), x.len())?;
                 for i in 0..x.len() {
                     x[i] += 0.5 * dt * (v0[i] + v1[i]);
                 }
@@ -97,6 +109,51 @@ pub fn integrate_fixed(
 mod tests {
     use super::*;
     use proptest::prelude::*;
+
+    fn assert_velocity_shape_error(result: crate::Result<Array1<f32>>) {
+        assert!(
+            matches!(result, Err(crate::Error::Shape(VELOCITY_SHAPE_ERROR))),
+            "expected velocity shape error, got {result:?}"
+        );
+    }
+
+    #[test]
+    fn euler_rejects_short_and_long_velocity_vectors() {
+        let x0 = Array1::zeros(2);
+
+        for velocity_len in [1, 3] {
+            let result = integrate_fixed(OdeMethod::Euler, &x0, 0.0, 0.1, 1, |_x, _t| {
+                Ok(Array1::zeros(velocity_len))
+            });
+            assert_velocity_shape_error(result);
+        }
+    }
+
+    #[test]
+    fn heun_rejects_short_and_long_first_velocity_vectors() {
+        let x0 = Array1::zeros(2);
+
+        for velocity_len in [1, 3] {
+            let result = integrate_fixed(OdeMethod::Heun, &x0, 0.0, 0.1, 1, |_x, _t| {
+                Ok(Array1::zeros(velocity_len))
+            });
+            assert_velocity_shape_error(result);
+        }
+    }
+
+    #[test]
+    fn heun_rejects_a_mismatched_second_velocity_vector() {
+        let x0 = Array1::zeros(2);
+        let mut calls = 0;
+
+        let result = integrate_fixed(OdeMethod::Heun, &x0, 0.0, 0.1, 1, |_x, _t| {
+            calls += 1;
+            Ok(Array1::zeros(if calls == 1 { 2 } else { 1 }))
+        });
+
+        assert_eq!(calls, 2);
+        assert_velocity_shape_error(result);
+    }
 
     #[test]
     fn heun_is_more_accurate_than_euler_on_dx_dt_eq_minus_x() {
