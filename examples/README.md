@@ -1,5 +1,8 @@
 # flowmatch examples
 
+The Riemannian and CTMC examples are small experimental demonstrations,
+not paper reproductions or benchmark evidence.
+
 ## Where to start
 
 | I want to... | Run |

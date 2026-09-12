@@ -123,7 +123,9 @@ impl LinearCondField {
         Ok(())
     }
 
-    /// Mean squared error averaged over a batch.
+    /// Mean squared error averaged over a non-empty batch and its dimensions.
+    ///
+    /// Returns a domain error when either axis is empty; an empty mean is undefined.
     pub fn mse_batch(
         &self,
         xs: &ArrayView2<f32>,
@@ -136,6 +138,11 @@ impl LinearCondField {
         if ys.nrows() != n || ys.ncols() != d || us.nrows() != n || us.ncols() != d || ts.len() != n
         {
             return Err(crate::Error::Shape("batch dimensions must agree"));
+        }
+        if n == 0 || d == 0 {
+            return Err(crate::Error::Domain(
+                "MSE requires a non-empty batch and dimension",
+            ));
         }
 
         let mut s: f64 = 0.0;
@@ -153,6 +160,19 @@ impl LinearCondField {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn mse_batch_rejects_empty_axes() {
+        for (n, d) in [(0, 2), (2, 0)] {
+            let field = LinearCondField::new_zeros(d);
+            let batch = Array2::zeros((n, d));
+            let ts = vec![0.5; n];
+            assert!(matches!(
+                field.mse_batch(&batch.view(), &ts, &batch.view(), &batch.view()),
+                Err(crate::Error::Domain(_))
+            ));
+        }
+    }
 
     #[test]
     fn zero_field_evals_to_zero() {

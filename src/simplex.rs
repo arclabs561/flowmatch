@@ -59,11 +59,11 @@ pub fn normalize_simplex(p: &[f32]) -> Result<Vec<f32>> {
     if p.iter().any(|&x| x < 0.0) {
         return Err(Error::Domain("vector must be nonnegative to normalize"));
     }
-    let s: f32 = p.iter().sum();
+    let s: f64 = p.iter().map(|&x| f64::from(x)).sum();
     if s <= 0.0 {
         return Err(Error::Domain("vector must have positive total mass"));
     }
-    Ok(p.iter().map(|&x| x / s).collect())
+    Ok(p.iter().map(|&x| (f64::from(x) / s) as f32).collect())
 }
 
 /// Linear interpolant on the simplex: `p(t) = (1-t)p0 + t p1`.
@@ -160,6 +160,13 @@ mod tests {
         // Check proportions are preserved.
         assert!((n[0] / n[1] - 0.5).abs() < 1e-6);
         assert!((n[2] / n[3] - 0.75).abs() < 1e-6);
+    }
+
+    #[test]
+    fn normalize_simplex_avoids_f32_sum_overflow() {
+        let normalized = normalize_simplex(&[f32::MAX, f32::MAX]).unwrap();
+        assert_eq!(normalized, vec![0.5, 0.5]);
+        validate_simplex(&normalized, 0.0).unwrap();
     }
 
     #[test]

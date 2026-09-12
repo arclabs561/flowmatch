@@ -5,3 +5,4 @@ target/
 proptest-regressions/
 Cargo.lock
 /semver-checks/
+.agents/

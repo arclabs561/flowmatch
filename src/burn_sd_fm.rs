@@ -23,7 +23,8 @@ use wass::semidiscrete::{
 
 use crate::linear::LinearCondField;
 use crate::sd_fm::{
-    sample_categorical_from_probs, SdFmTrainAssignment, SdFmTrainConfig, TrainedSdFm,
+    sample_categorical_from_probs, validate_training_inputs, SdFmTrainAssignment, SdFmTrainConfig,
+    TrainedSdFm,
 };
 use crate::{Error, Result};
 
@@ -116,6 +117,9 @@ fn ndarray_to_burn_2_keepdim<B: Backend>(
 }
 
 /// Burn-backed version of SD-FM training (exports to `TrainedSdFm`).
+///
+/// `fm_cfg.seed` controls ndarray-side batch sampling. It does not seed Burn's linear-layer
+/// initialization, so it is not a cross-backend reproducibility control.
 pub fn train_sd_fm_semidiscrete_linear_burn(
     device: &<BurnBackend as Backend>::Device,
     y: &ArrayView2<f32>,
@@ -127,24 +131,9 @@ pub fn train_sd_fm_semidiscrete_linear_burn(
 ) -> Result<TrainedSdFm> {
     let n = y.nrows();
     let d = y.ncols();
-    if n == 0 || d == 0 {
-        return Err(Error::Domain("y must be non-empty"));
-    }
-    if b.len() != n {
-        return Err(Error::Shape("b length must match y.nrows()"));
-    }
-    if b.iter().any(|&x| x < 0.0) {
-        return Err(Error::Domain("b must be nonnegative"));
-    }
-    let bs = b.sum();
-    if bs <= 0.0 {
-        return Err(Error::Domain("b must have positive total mass"));
-    }
-    if fm_cfg.steps == 0 || fm_cfg.batch_size == 0 {
-        return Err(Error::Domain("steps and batch_size must be >= 1"));
-    }
+    let b_total = validate_training_inputs(y, b, fm_cfg, lr)?;
 
-    let b_norm = b.to_owned() / bs;
+    let b_norm = b.to_owned() / b_total;
     let g = match assignment {
         SdFmTrainAssignment::SemidiscretePotentials => {
             fit_potentials_sgd_neg_dot(y, &b_norm.view(), pot_cfg)
@@ -227,6 +216,7 @@ pub fn train_sd_fm_semidiscrete_linear_burn(
 /// Burn-backed version of RFM minibatch OT training (exports to `TrainedSdFm`).
 ///
 /// We keep the coupling logic (pairing) in ndarray, then perform the regression update in Burn.
+/// `fm_cfg.seed` controls ndarray-side batch sampling, not Burn module initialization.
 pub fn train_rfm_minibatch_ot_linear_burn(
     device: &<BurnBackend as Backend>::Device,
     y: &ArrayView2<f32>,
@@ -238,27 +228,12 @@ pub fn train_rfm_minibatch_ot_linear_burn(
     // Reuse the validation and pairing logic from ndarray implementation, but do the SGD step in Burn.
     let n = y.nrows();
     let d = y.ncols();
-    if n == 0 || d == 0 {
-        return Err(Error::Domain("y must be non-empty"));
-    }
-    if b.len() != n {
-        return Err(Error::Shape("b length must match y.nrows()"));
-    }
-    if b.iter().any(|&x| x < 0.0) {
-        return Err(Error::Domain("b must be nonnegative"));
-    }
-    let bs = b.sum();
-    if bs <= 0.0 {
-        return Err(Error::Domain("b must have positive total mass"));
-    }
-    if fm_cfg.steps == 0 || fm_cfg.batch_size == 0 {
-        return Err(Error::Domain("steps and batch_size must be >= 1"));
-    }
+    let b_total = validate_training_inputs(y, b, fm_cfg, lr)?;
     if rfm_cfg.pairing_every == 0 {
         return Err(Error::Domain("rfm_cfg.pairing_every must be >= 1"));
     }
 
-    let b_norm = b.to_owned() / bs;
+    let b_norm = b.to_owned() / b_total;
     let g = Array1::<f32>::zeros(n);
 
     let mut model = BurnLinearCondField::<BurnBackend>::new(device, d);

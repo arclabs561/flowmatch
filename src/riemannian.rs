@@ -9,7 +9,7 @@
 //! Target: `u_t(x_t) = dx_t/dt` (tangent vector to the geodesic at `x_t`)
 //! Loss: `|| v_t(x_t) - u_t(x_t) ||_{x_t}^2` (Riemannian metric norm)
 
-use crate::sd_fm::SdFmTrainConfig;
+use crate::sd_fm::{validate_training_config, SdFmTrainConfig};
 use crate::{Error, Result};
 use ndarray::{Array1, ArrayView1, ArrayView2};
 use rand::{Rng, SeedableRng};
@@ -50,9 +50,14 @@ where
     S: Fn(&mut ChaCha8Rng) -> Array1<f32>,
 {
     let n_data = x1_samples.nrows();
-    if n_data == 0 {
+    let d = x1_samples.ncols();
+    if n_data == 0 || d == 0 {
         return Err(Error::Domain("x1_samples must be non-empty"));
     }
+    if x1_samples.iter().any(|&value| !value.is_finite()) {
+        return Err(Error::Domain("x1_samples must contain only finite values"));
+    }
+    validate_training_config(cfg, cfg.lr as f64)?;
 
     let mut rng = ChaCha8Rng::seed_from_u64(cfg.seed);
 
@@ -61,6 +66,14 @@ where
             // 1. Sample t, x0, x1
             let t = cfg.t_schedule.sample_t(&mut rng);
             let x0_f32 = sample_x0(&mut rng);
+            if x0_f32.len() != d {
+                return Err(Error::Shape(
+                    "sample_x0 must return x1_samples.ncols() values",
+                ));
+            }
+            if x0_f32.iter().any(|&value| !value.is_finite()) {
+                return Err(Error::Domain("sample_x0 must return only finite values"));
+            }
 
             // Pick random target x1 (use gen_range for uniform integer sampling
             // without f32 precision limits).

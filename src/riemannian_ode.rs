@@ -9,6 +9,15 @@ use skel::Manifold;
 
 use crate::ode::OdeMethod;
 
+const VELOCITY_SHAPE_ERROR: &str = "velocity must have the same length as the state";
+
+fn validate_velocity_len(velocity_len: usize, state_len: usize) -> crate::Result<()> {
+    if velocity_len != state_len {
+        return Err(crate::Error::Shape(VELOCITY_SHAPE_ERROR));
+    }
+    Ok(())
+}
+
 /// Integrate a Riemannian ODE forward with fixed steps on a manifold.
 ///
 /// ODE: `dx/dt = v(x(t), t)` where `v(x,t) in T_x M`.
@@ -45,6 +54,7 @@ where
         OdeMethod::Euler => {
             for _ in 0..steps {
                 let v = f(&x.view(), t);
+                validate_velocity_len(v.len(), x.len())?;
                 let step = v.mapv(|u| u * dt);
                 x = manifold.exp_map(&x.view(), &step.view());
                 // Project back onto manifold to correct numerical drift.
@@ -55,6 +65,7 @@ where
         OdeMethod::Heun => {
             for _ in 0..steps {
                 let v0 = f(&x.view(), t);
+                validate_velocity_len(v0.len(), x.len())?;
 
                 // predictor (Euler)
                 let step0 = v0.mapv(|u| u * dt);
@@ -63,6 +74,7 @@ where
 
                 // corrector velocity lives in T_{x_pred} M
                 let v1 = f(&x_pred.view(), t + dt);
+                validate_velocity_len(v1.len(), x.len())?;
 
                 // Bring v1 back to T_x M so we can average in one tangent space.
                 let v1_at_x = manifold.parallel_transport(&x_pred.view(), &x.view(), &v1.view());
@@ -86,6 +98,50 @@ mod tests {
     use super::*;
     use hyperball::PoincareBall;
     use proptest::prelude::*;
+
+    fn assert_velocity_shape_error(result: crate::Result<Array1<f64>>) {
+        assert!(
+            matches!(
+                result,
+                Err(crate::Error::Shape(
+                    "velocity must have the same length as the state"
+                ))
+            ),
+            "expected velocity shape error, got {result:?}"
+        );
+    }
+
+    #[test]
+    fn euler_rejects_mismatched_velocity_length() {
+        let manifold = PoincareBall::<f64>::new(1.0);
+        let x0 = Array1::zeros(2);
+        let result =
+            integrate_fixed_manifold(OdeMethod::Euler, &manifold, &x0, 0.0, 0.1, 1, |_x, _t| {
+                Array1::zeros(1)
+            });
+        assert_velocity_shape_error(result);
+    }
+
+    #[test]
+    fn heun_rejects_mismatched_first_and_second_velocity_lengths() {
+        let manifold = PoincareBall::<f64>::new(1.0);
+        let x0 = Array1::zeros(2);
+
+        let first =
+            integrate_fixed_manifold(OdeMethod::Heun, &manifold, &x0, 0.0, 0.1, 1, |_x, _t| {
+                Array1::zeros(1)
+            });
+        assert_velocity_shape_error(first);
+
+        let mut calls = 0;
+        let second =
+            integrate_fixed_manifold(OdeMethod::Heun, &manifold, &x0, 0.0, 0.1, 1, |_x, _t| {
+                calls += 1;
+                Array1::zeros(if calls == 1 { 2 } else { 1 })
+            });
+        assert_eq!(calls, 2);
+        assert_velocity_shape_error(second);
+    }
 
     fn poincare_point() -> impl Strategy<Value = Array1<f64>> {
         prop::collection::vec(-0.6f64..0.6f64, 2).prop_map(|v| {

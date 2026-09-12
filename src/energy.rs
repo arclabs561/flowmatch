@@ -75,18 +75,18 @@ pub fn energy_matching_target(
     }
     validate_sigma(config.sigma)?;
 
-    let sigma_sq = config.sigma * config.sigma;
+    let sigma_sq = f64::from(config.sigma) * f64::from(config.sigma);
 
     // mu_t = (1 - t) * x0 + t * x1
     // E = -0.5 * ||x - mu_t||^2 / sigma^2
     let mut dist_sq = 0.0f64;
     for i in 0..d {
-        let mu_i = (1.0 - t) * x0[i] + t * x1[i];
-        let diff = (x[i] - mu_i) as f64;
+        let mu_i = (1.0 - f64::from(t)) * f64::from(x0[i]) + f64::from(t) * f64::from(x1[i]);
+        let diff = f64::from(x[i]) - mu_i;
         dist_sq += diff * diff;
     }
 
-    Ok((-0.5 * dist_sq / sigma_sq as f64) as f32)
+    Ok((-0.5 * dist_sq / sigma_sq) as f32)
 }
 
 /// Compute a Bregman energy target around a path center.
@@ -213,11 +213,11 @@ pub fn energy_gradient(
     }
     validate_sigma(config.sigma)?;
 
-    let sigma_sq = config.sigma * config.sigma;
+    let sigma_sq = f64::from(config.sigma) * f64::from(config.sigma);
     let mut grad = Array1::<f32>::zeros(d);
     for i in 0..d {
-        let mu_i = (1.0 - t) * x0[i] + t * x1[i];
-        grad[i] = -(x[i] - mu_i) / sigma_sq;
+        let mu_i = (1.0 - f64::from(t)) * f64::from(x0[i]) + f64::from(t) * f64::from(x1[i]);
+        grad[i] = (-(f64::from(x[i]) - mu_i) / sigma_sq) as f32;
     }
     Ok(grad)
 }
@@ -419,6 +419,29 @@ mod tests {
                 .zip(gaussian.iter())
                 .all(|(a, b)| (a - b).abs() < 1e-6),
             "Bregman gradient {bregman:?} should match Gaussian gradient {gaussian:?}"
+        );
+    }
+
+    #[test]
+    fn small_sigma_keeps_finite_gaussian_energy_and_gradient() {
+        let x0 = arr(&[0.0]);
+        let x1 = arr(&[0.0]);
+        let x = arr(&[1e-30]);
+        let config = EnergyMatchingConfig {
+            sigma: 1e-30,
+            num_samples: 1,
+        };
+
+        let energy =
+            energy_matching_target(&x.view(), &x0.view(), &x1.view(), 0.0, &config).unwrap();
+        let gradient = energy_gradient(&x.view(), &x0.view(), &x1.view(), 0.0, &config).unwrap();
+
+        assert!((energy + 0.5).abs() < 1e-6, "expected -0.5, got {energy}");
+        assert!(gradient[0].is_finite());
+        assert!(
+            ((gradient[0] + 1e30) / 1e30).abs() < 1e-5,
+            "expected approximately -1e30, got {}",
+            gradient[0]
         );
     }
 

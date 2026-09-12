@@ -11,7 +11,8 @@
 //!
 //! ## Public invariants (must not change)
 //!
-//! - **Determinism knobs are explicit**: training/sampling functions take `seed` (or configs do).
+//! - **Core ndarray determinism knobs are explicit**: training/sampling functions take `seed`
+//!   (or configs do). Optional backends can have additional runtime nondeterminism.
 //! - **No hidden normalization**: if inputs are normalized, it is stated in the doc comment.
 //! - **Backend-agnostic by default**: this crate uses `ndarray` and simple SGD; no GPU framework types
 //!   leak through the public API in the default feature set.
@@ -19,9 +20,9 @@
 //!
 //! ## How this maps to “Flow Matching” (papers)
 //!
-//! The core training objective used here is the standard *conditional flow matching* regression
-//! (sample `t`, sample a point on a path `x_t`, regress a vector field `v_theta(x_t, t)`
-//! toward a target velocity `u_t`). Concretely:
+//! The core SD-FM baseline uses conditional flow matching regression: sample `t`, sample a point
+//! on a path `x_t`, and regress the endpoint-conditioned field `v_theta(x_t, t; y_j)` toward a
+//! target velocity `u_t`. Concretely:
 //!
 //! - `sd_fm::train_sd_fm_semidiscrete_linear` uses a **linear interpolation path**
 //!   `x_t = (1-t) x_0 + t y_j` and target `u_t = y_j - x_0`.
@@ -69,10 +70,10 @@
 //! - `ot_cfm`: OT-conditional flow matching (mini-batch OT coupling for CFM training)
 //! - `energy`: energy matching (scalar energy whose gradient gives the velocity field)
 //! - `metrics`: evaluation metrics (JS divergence, entropic OT cost)
-//! - `discrete_ctmc`: CTMC generator scaffolding for discrete FM
+//! - `discrete_ctmc`: experimental CTMC generator scaffolding for discrete FM
 //! - `simplex`: simplex utilities for discrete FM variants
-//! - `riemannian`: Riemannian FM training (feature-gated: `riemannian`)
-//! - `riemannian_ode`: manifold ODE integrators (feature-gated: `riemannian`)
+//! - `riemannian`: experimental Riemannian FM training (feature-gated: `riemannian`)
+//! - `riemannian_ode`: experimental manifold ODE integrators (feature-gated: `riemannian`)
 //! - `burn_euclidean`: Burn-backed Euclidean FM training (feature-gated: `burn`)
 //! - `burn_sd_fm`: Burn-backed SD-FM/RFM training (feature-gated: `burn`)
 

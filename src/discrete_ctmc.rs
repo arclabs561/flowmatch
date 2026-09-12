@@ -45,8 +45,10 @@ pub enum DiscreteSchedule {
     /// `kappa(t) = sin^2(pi*t/2) = (1 - cos(pi*t)) / 2`.
     ///
     /// It starts slow near t=0, accelerates through mid-range, and decelerates near t=1.
-    /// The derivative `kappa'(t) = (pi/2) * sin(pi*t)` vanishes at both endpoints,
-    /// which avoids the `1/(1-t)` singularity of the linear schedule.
+    /// The derivative `kappa'(t) = (pi/2) * sin(pi*t)` vanishes at both endpoints.
+    /// The unclamped rate `kappa'/(1-kappa) = pi*tan(pi*t/2)` nevertheless
+    /// diverges as t approaches 1 from below. Rate construction uses an epsilon
+    /// denominator clamp; exact-endpoint handling does not remove this limit.
     CosineSq,
     /// Flowfusion-style cosine: `kappa(t) = 1 - cos(pi * t / 2)`.
     ///
@@ -81,6 +83,10 @@ impl DiscreteSchedule {
         Ok(match self {
             Self::Linear => 1.0,
             // d/dt sin^2(pi*t/2) = (pi/2) * sin(pi*t)
+            // Preserve the exact mathematical endpoint values. In `f32`,
+            // `sin(PI)` is slightly negative, which would make a CTMC rate
+            // negative at t=1.
+            Self::CosineSq if t == 0.0 || t == 1.0 => 0.0,
             Self::CosineSq => std::f32::consts::FRAC_PI_2 * (std::f32::consts::PI * t).sin(),
             // d/dt (1 - cos(pi*t/2)) = (pi/2) * sin(pi*t/2)
             Self::CosineHalf => {
@@ -167,6 +173,11 @@ pub fn conditional_rate_matrix(
     let kap_dot = schedule.kappa_dot(t)?;
     let denom = (1.0 - kap).max(eps);
     let rate = kap_dot / denom;
+    if !rate.is_finite() || rate < 0.0 {
+        return Err(Error::Domain(
+            "conditional rate must be finite and nonnegative",
+        ));
+    }
 
     // Only the row for state x0 has a nonzero off-diagonal entry (to x1).
     r[[x0, x1]] = rate;
@@ -322,6 +333,13 @@ mod tests {
     }
 
     #[test]
+    fn cosine_sq_kappa_dot_is_exactly_zero_at_endpoints() {
+        let schedule = DiscreteSchedule::CosineSq;
+        assert_eq!(schedule.kappa_dot(0.0).unwrap(), 0.0);
+        assert_eq!(schedule.kappa_dot(1.0).unwrap(), 0.0);
+    }
+
+    #[test]
     fn cosine_half_schedule_boundary_values() {
         let s = DiscreteSchedule::CosineHalf;
         assert!((s.kappa(0.0).unwrap()).abs() < 1e-7, "kappa(0) should be 0");
@@ -395,6 +413,32 @@ mod tests {
                 "expected zero matrix when x0 == x1, got {v}"
             );
         }
+    }
+
+    #[test]
+    fn cosine_sq_endpoint_rate_is_zero_and_a_valid_generator() {
+        let r = conditional_rate_matrix(DiscreteSchedule::CosineSq, 1.0, 0, 1, 2, 1e-5).unwrap();
+        assert_eq!(r[[0, 0]], 0.0);
+        assert_eq!(r[[0, 1]], 0.0);
+        CtmcGenerator { q: r }.validate(0.0).unwrap();
+    }
+
+    #[test]
+    fn conditional_rate_rejects_overflow() {
+        let result = conditional_rate_matrix(
+            DiscreteSchedule::CosineHalf,
+            1.0,
+            0,
+            1,
+            2,
+            f32::from_bits(1),
+        );
+        assert!(matches!(
+            result,
+            Err(Error::Domain(
+                "conditional rate must be finite and nonnegative"
+            ))
+        ));
     }
 
     #[test]

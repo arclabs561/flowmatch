@@ -41,16 +41,22 @@ pub(crate) fn sample_categorical_from_probs(
     debug_assert!(!probs.is_empty());
     debug_assert!(probs.iter().all(|&x| x >= 0.0 && x.is_finite()));
     // Note: even if `probs.sum()` is very close to 1, float roundoff can leave the cumulative
-    // sum slightly below 1.0. We therefore fall back to the last index instead of biasing to 0.
+    // sum slightly below 1.0. Fall back to the final positive-mass index, rather than selecting
+    // a trailing zero-probability category.
     let u: f32 = rng.random();
     let mut acc = 0.0f32;
+    let mut last_positive = 0usize;
     for idx in 0..probs.len() {
-        acc += probs[idx];
+        let prob = probs[idx];
+        if prob > 0.0 {
+            last_positive = idx;
+        }
+        acc += prob;
         if u < acc {
             return idx;
         }
     }
-    probs.len() - 1
+    last_positive
 }
 
 /// How we sample the FM time variable `t ∈ [0,1]` during training.
@@ -65,10 +71,8 @@ pub(crate) fn sample_categorical_from_probs(
 ///   and recommended in the FM Guide (Lipman et al. 2024). Concentrates mass near `t=0.5` by default,
 ///   but `mean`/`std` parameters can shift and widen the distribution.
 ///
-/// The conditional velocity target `u_t = (y - x_t) / (1 - t)` has variance that
-/// diverges as `t -> 1`. Non-uniform schedules (U-shaped, logit-normal) reduce
-/// gradient variance by concentrating samples away from this singularity
-/// (Yang et al. 2026, "Stable Velocity").
+/// These schedules only change the weighting of timesteps in this fixed-velocity
+/// linear-path baseline; they do not regularize an endpoint singularity.
 #[derive(Debug, Clone, Copy, Default)]
 pub enum TimestepSchedule {
     /// Uniform `t ~ U[0,1]`.
@@ -86,15 +90,18 @@ pub enum TimestepSchedule {
     ///
     /// The output is clamped to `[eps, 1-eps]` to avoid exact 0 or 1.
     LogitNormal {
-        /// Location parameter of the underlying normal distribution.
+        /// Finite location parameter of the underlying normal distribution.
         mean: f32,
-        /// Scale parameter of the underlying normal distribution.
+        /// Finite, nonnegative scale parameter of the underlying normal distribution.
         std: f32,
     },
 }
 
 impl TimestepSchedule {
     /// Draw a random timestep in `[0, 1]` according to this schedule.
+    ///
+    /// For [`Self::LogitNormal`], callers must provide finite `mean` and a finite,
+    /// nonnegative `std`. Training entry points validate this precondition before sampling.
     #[inline]
     pub fn sample_t(self, rng: &mut impl rand::Rng) -> f32 {
         match self {
@@ -149,6 +156,61 @@ impl Default for FmTrainConfig {
             t_schedule: TimestepSchedule::Uniform,
         }
     }
+}
+
+/// Validate configuration shared by ndarray, Burn, and Riemannian training loops.
+///
+/// `effective_lr` is supplied by the active backend: ndarray uses `fm_cfg.lr`, while Burn
+/// receives its learning rate as a separate `f64` argument.
+pub(crate) fn validate_training_config(fm_cfg: &FmTrainConfig, effective_lr: f64) -> Result<()> {
+    if !effective_lr.is_finite() || effective_lr <= 0.0 {
+        return Err(Error::Domain("learning rate must be positive and finite"));
+    }
+    if fm_cfg.steps == 0 || fm_cfg.batch_size == 0 {
+        return Err(Error::Domain("steps and batch_size must be >= 1"));
+    }
+    if let TimestepSchedule::LogitNormal { mean, std } = fm_cfg.t_schedule {
+        if !mean.is_finite() || !std.is_finite() {
+            return Err(Error::Domain("logit-normal mean and std must be finite"));
+        }
+        if std < 0.0 {
+            return Err(Error::Domain("logit-normal std must be nonnegative"));
+        }
+    }
+    Ok(())
+}
+
+/// Validate Euclidean support and weights shared by ndarray and Burn training loops.
+pub(crate) fn validate_training_inputs(
+    y: &ArrayView2<f32>,
+    b: &ArrayView1<f32>,
+    fm_cfg: &FmTrainConfig,
+    effective_lr: f64,
+) -> Result<f32> {
+    let n = y.nrows();
+    let d = y.ncols();
+    if n == 0 || d == 0 {
+        return Err(Error::Domain("y must be non-empty"));
+    }
+    if y.iter().any(|&value| !value.is_finite()) {
+        return Err(Error::Domain("y must contain only finite values"));
+    }
+    if b.len() != n {
+        return Err(Error::Shape("b length must match y.nrows()"));
+    }
+    if b.iter().any(|&value| !value.is_finite()) {
+        return Err(Error::Domain("b must contain only finite values"));
+    }
+    if b.iter().any(|&value| value < 0.0) {
+        return Err(Error::Domain("b must be nonnegative"));
+    }
+    let b_total = b.sum();
+    if !b_total.is_finite() || b_total <= 0.0 {
+        return Err(Error::Domain("b must have positive finite total mass"));
+    }
+    validate_training_config(fm_cfg, effective_lr)?;
+
+    Ok(b_total)
 }
 
 /// Configuration for minibatch-OT rectified flow matching (RFM) coupling.
@@ -376,28 +438,10 @@ pub fn train_sd_fm_semidiscrete_linear_with_assignment(
 ) -> Result<TrainedSdFm> {
     let n = y.nrows();
     let d = y.ncols();
-    if n == 0 || d == 0 {
-        return Err(Error::Domain("y must be non-empty"));
-    }
-    if b.len() != n {
-        return Err(Error::Shape("b length must match y.nrows()"));
-    }
-    if b.iter().any(|&x| x < 0.0) {
-        return Err(Error::Domain("b must be nonnegative"));
-    }
-    let bs = b.sum();
-    if bs <= 0.0 {
-        return Err(Error::Domain("b must have positive total mass"));
-    }
-    if !fm_cfg.lr.is_finite() || fm_cfg.lr <= 0.0 {
-        return Err(Error::Domain("lr must be positive and finite"));
-    }
-    if fm_cfg.steps == 0 || fm_cfg.batch_size == 0 {
-        return Err(Error::Domain("steps and batch_size must be >= 1"));
-    }
+    let b_total = validate_training_inputs(y, b, fm_cfg, fm_cfg.lr as f64)?;
 
     // Normalize b for downstream uses.
-    let b_norm = b.to_owned() / bs;
+    let b_norm = b.to_owned() / b_total;
 
     // 1) Fit potentials (only needed for semidiscrete assignment).
     let g = match assignment {
@@ -480,25 +524,7 @@ pub fn train_rfm_minibatch_ot_linear(
 ) -> Result<TrainedSdFm> {
     let n = y.nrows();
     let d = y.ncols();
-    if n == 0 || d == 0 {
-        return Err(Error::Domain("y must be non-empty"));
-    }
-    if b.len() != n {
-        return Err(Error::Shape("b length must match y.nrows()"));
-    }
-    if b.iter().any(|&x| x < 0.0) {
-        return Err(Error::Domain("b must be nonnegative"));
-    }
-    let b_total = b.sum();
-    if b_total <= 0.0 {
-        return Err(Error::Domain("b must have positive total mass"));
-    }
-    if !fm_cfg.lr.is_finite() || fm_cfg.lr <= 0.0 {
-        return Err(Error::Domain("lr must be positive and finite"));
-    }
-    if fm_cfg.steps == 0 || fm_cfg.batch_size == 0 {
-        return Err(Error::Domain("steps and batch_size must be >= 1"));
-    }
+    let b_total = validate_training_inputs(y, b, fm_cfg, fm_cfg.lr as f64)?;
     if rfm_cfg.pairing_every == 0 {
         return Err(Error::Domain("rfm_cfg.pairing_every must be >= 1"));
     }
@@ -760,6 +786,34 @@ mod tests {
             let idx = sample_categorical_from_probs(&p.view(), &mut rng);
             assert_eq!(idx, 1, "expected index 1 (p=1.0), got {idx} (p=0.0)");
         }
+    }
+
+    #[test]
+    fn sample_categorical_rounding_fallback_skips_trailing_zero_prob() {
+        let p = Array1::from_vec(vec![0.3333333f32, 0.3333333, 0.3333333, 0.0]);
+
+        // `random::<f32>()` converts this to the largest representable value below 1.0.
+        struct MaxRng;
+        impl rand::RngCore for MaxRng {
+            fn next_u32(&mut self) -> u32 {
+                u32::MAX
+            }
+            fn next_u64(&mut self) -> u64 {
+                u64::MAX
+            }
+            fn fill_bytes(&mut self, dest: &mut [u8]) {
+                for byte in dest {
+                    *byte = u8::MAX;
+                }
+            }
+        }
+
+        let mut rng = MaxRng;
+        let idx = sample_categorical_from_probs(&p.view(), &mut rng);
+        assert_eq!(
+            idx, 2,
+            "rounding fallback must not select trailing zero mass"
+        );
     }
 
     proptest! {

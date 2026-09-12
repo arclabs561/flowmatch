@@ -15,8 +15,9 @@ cargo add flowmatch
 
 You have a set of target points (protein backbone angles, earthquake epicenters, token embeddings) and want to train a vector field that transforms Gaussian noise into samples from the same distribution. Flow matching [1] does this by regressing a conditional vector field along straight (or geodesic) interpolation paths, then sampling via ODE integration.
 
-`flowmatch` provides the training loop, OT-based coupling, ODE integration,
-and evaluation metrics. It works on flat spaces and Riemannian manifolds.
+`flowmatch` provides small training loops, OT-based coupling, ODE integration,
+and evaluation metrics. Riemannian training and integration are experimental
+and feature-gated. Experimental CTMC primitives are included by default.
 
 ## Examples
 
@@ -105,9 +106,18 @@ See [`examples/README.md`](examples/README.md) for the example map, including di
 
 **Evaluation**: JS divergence on histograms and entropic OT cost.
 
+The Riemannian and CTMC paths are small demonstrations, not paper
+reproductions or benchmark evidence.
+
+The core linear model remains endpoint-conditioned while sampling: after an
+assignment it integrates `v(x, t; y)`. Its assigned-target MSE does not
+establish unconditional generation or a general coupling improvement.
+
 ## Status
 
-MSRV: 1.80.
+Declared MSRV: Rust 1.80 for the default feature set; it is not CI-validated.
+The current locked macOS resolution of the optional `burn` backend requires
+Rust 1.88 or newer.
 
 The protein and earthquake examples train and score against small checked-in
 supports. They demonstrate the training and evaluation paths; their metrics do
@@ -127,10 +137,10 @@ cargo test -p flowmatch --features sheaf-evals
 
 1. Lipman et al., [Flow Matching for Generative Modeling](https://arxiv.org/abs/2210.02747) (2022)
 2. Lipman et al., [Flow Matching Guide and Code](https://arxiv.org/abs/2412.06264) (2024). Tutorial and code guide
-3. Gat et al., [Discrete Flow Matching](https://proceedings.neurips.cc/paper_files/paper/2024/hash/8a2a3efb0b8e1b8cbd7c69bda6a4d2df-Abstract-Conference.html) (NeurIPS 2024). CTMC-based discrete FM
+3. Gat et al., [Discrete Flow Matching](https://proceedings.neurips.cc/paper_files/paper/2024/hash/f0d629a734b56a642701bba7bc8bb3ed-Abstract-Conference.html) (NeurIPS 2024). CTMC-based discrete FM
 4. Chen & Lipman, [Riemannian Flow Matching on General Geometries](https://arxiv.org/abs/2302.03660) (2023)
 5. de Kruiff et al., [Pullback Flow Matching on Data Manifolds](https://arxiv.org/abs/2410.04543) (2024). FM on implicit manifolds without closed-form exp/log maps
-6. Sherry & Smets, [Flow Matching on Lie Groups](https://arxiv.org/abs/2505.08393) (2025). Specialization to SO(3) and SE(3)
+6. Sherry & Smets, [Flow Matching on Lie Groups](https://arxiv.org/abs/2504.00494) (2025). Specialization to SO(3) and SE(3)
 7. Liu et al., [Flow Straight and Fast: Learning to Generate and Transfer Data with Rectified Flow](https://arxiv.org/abs/2209.03003) (2022). Rectified flow
 
 ## License

@@ -123,7 +123,8 @@ fn main() {
     }
 
     println!("\nEndpoint-rate note:");
-    println!("  The cosine-squared schedule has kappa'(0) = kappa'(1) = 0, avoiding");
-    println!("  the 1/(1-t) singularity in the rate matrix near t=1. The linear schedule");
-    println!("  has constant kappa'=1, causing the rate to blow up as t -> 1.");
+    println!("  CosineSq has kappa'(0) = kappa'(1) = 0, but its unclamped rate");
+    println!("  pi*tan(pi*t/2) still diverges as t -> 1 from below, as does Linear.");
+    println!("  The implementation clamps the denominator with eps and returns zero");
+    println!("  at the exact CosineSq endpoint; this does not remove near-endpoint stiffness.");
 }
