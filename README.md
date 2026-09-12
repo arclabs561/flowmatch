@@ -3,7 +3,13 @@
 [![crates.io](https://img.shields.io/crates/v/flowmatch.svg)](https://crates.io/crates/flowmatch)
 [![Documentation](https://docs.rs/flowmatch/badge.svg)](https://docs.rs/flowmatch)
 
-Flow matching.
+Train conditional vector fields with flow matching.
+
+## Install
+
+```sh
+cargo add flowmatch
+```
 
 ## Problem
 
@@ -97,11 +103,16 @@ See [`examples/README.md`](examples/README.md) for the example map, including di
 
 **Discrete FM**: CTMC generator scaffolding with cosine-squared schedule [3], conditional probability paths, conditional rate matrices.
 
-**Evaluation**: JS divergence on histograms, entropic OT cost.
+**Evaluation**: JS divergence on histograms and entropic OT cost.
 
 ## Status
 
 MSRV: 1.80.
+
+The protein and earthquake examples train and score against small checked-in
+supports. They demonstrate the training and evaluation paths; their metrics do
+not estimate out-of-sample generative quality, protein conformations, or
+earthquake forecasts. Riemannian support is experimental.
 
 ## Tests
 

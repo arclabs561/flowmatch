@@ -26,9 +26,11 @@ cargo run --release --example mmd_flow_eval
 cargo run --release --example discrete_ctmc_path_evolution
 ```
 
-## Real data
+## Small checked-in datasets
 
-These examples use small checked-in data artifacts.
+These examples fit and score the same small checked-in data artifacts. Their
+metrics are distributional comparisons, not out-of-sample quality estimates or
+domain predictions.
 
 | Data | Examples | What to read from the output |
 |---|---|---|
