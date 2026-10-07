@@ -3,7 +3,7 @@
 ## Run benchmarks
 
 ```bash
-cd /Users/arc/Documents/dev
+# From the flowmatch repository root:
 
 # Pairing microbench (isolates “coupling” costs)
 cargo bench -p flowmatch --bench pairing
@@ -19,13 +19,13 @@ Criterion HTML reports are written under `target/criterion/`.
 
 ## Profiling (what’s hot)
 
-This workspace’s macOS environment currently lacks the usual profiling CLIs (e.g. `xctrace`),
-and `pprof`/Criterion profiling was unstable (SIGTRAP) in practice.
+If profiling CLIs such as `xctrace` are unavailable, or `pprof`/Criterion
+profiling fails with SIGTRAP on your platform, use the timing examples below.
 
 Instead, use the explicit timing breakdown examples:
 
 ```bash
-cd /Users/arc/Documents/dev
+# From the flowmatch repository root:
 cargo run -p flowmatch --example profile_breakdown_usgs
 cargo run -p flowmatch --example profile_breakdown_torsions
 ```
