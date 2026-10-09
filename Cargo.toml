@@ -11,13 +11,16 @@ homepage = "https://github.com/arclabs561/flowmatch"
 documentation = "https://docs.rs/flowmatch"
 keywords = ["flow-matching", "diffusion", "ot", "generative-modeling"]
 categories = ["science", "mathematics"]
+exclude = ["/.github", "/.gitignore", "/.agents"]
 
 [workspace]
 
 [features]
 # Default build stays `ndarray`-only; `burn` is an opt-in training backend path.
 default = []
-sheaf-evals = ["dep:serde", "dep:serde_json", "dep:sheaf"]
+# Gates the sheaf-based evaluation examples, tests and bench. sheaf is a
+# dev-dependency, so library users never build it.
+sheaf-evals = []
 ## Enable experimental hyperbolic manifold ODE tests (requires compatible `hyperball` + `skel` APIs).
 riemannian = ["dep:skel"]
 burn = [
@@ -36,10 +39,7 @@ rand_chacha = "0.9"
 rand_distr = "0.5"
 logp = "0.2"
 wass = "0.2.2"
-serde = { version = "1.0", features = ["derive"], optional = true }
-serde_json = { version = "1.0", optional = true }
 skel = { version = "0.1", optional = true }
-sheaf = { version = "0.1.9", default-features = false, features = ["cluster", "community", "knn-graph", "metrics", "wass"], optional = true }
 burn-core = { version = "0.20.0", default-features = false, features = ["std"], optional = true }
 burn-autodiff = { version = "0.20.0", default-features = false, features = ["std"], optional = true }
 burn-ndarray = { version = "0.20.0", default-features = true, optional = true }
@@ -54,6 +54,9 @@ hyperball = "0.1"
 rkhs = "0.3.0"
 infogeom = { version = "0.2.1", features = ["manifold"] }
 fynch = { version = "0.2.2", features = ["logp"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sheaf = { version = "0.1.9", default-features = false, features = ["cluster", "community", "knn-graph", "metrics", "wass"] }
 
 [[example]]
 name = "ode_comparison"
