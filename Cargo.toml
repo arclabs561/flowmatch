@@ -36,7 +36,7 @@ thiserror = "2.0"
 ndarray = "0.16"
 rand = "0.9"
 rand_chacha = "0.9"
-rand_distr = "0.5"
+rand_distr = "0.6"
 logp = "0.2"
 wass = "0.2.2"
 skel = { version = "0.1", optional = true }
