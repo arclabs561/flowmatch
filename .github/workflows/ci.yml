@@ -6,6 +6,8 @@ permissions:
 on:
   push:
   pull_request:
+  schedule:
+    - cron: "17 6 * * 1"
 
 jobs:
   test:
@@ -29,6 +31,9 @@ jobs:
 
       - name: test
         run: cargo test --all-targets --all-features
+
+      - name: doctests
+        run: cargo test --doc --all-features
 
       - name: test (sheaf-evals)
         run: cargo test --all-targets --features sheaf-evals
