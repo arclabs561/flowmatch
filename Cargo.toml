@@ -48,7 +48,7 @@ burn-optim = { version = "0.20.0", default-features = false, features = ["std"],
 
 [dev-dependencies]
 proptest = "1.5"
-criterion = { version = "0.5", features = ["html_reports"] }
+criterion = { version = "0.8", features = ["html_reports"] }
 petgraph = "0.6"
 hyperball = "0.1"
 rkhs = "0.3.0"
