@@ -92,7 +92,7 @@ pub fn community_size_distribution(labels: &[usize], top_k: usize) -> Vec<f32> {
         *counts.entry(c).or_insert(0) += 1;
     }
     let mut sizes: Vec<f32> = counts.values().map(|&x| x as f32).collect();
-    sizes.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
+    sizes.sort_by(|a, b| b.total_cmp(a));
     let total: f32 = sizes.iter().sum();
     if total > 0.0 {
         for x in &mut sizes {

@@ -99,7 +99,7 @@ fn main() -> Result<()> {
         }
         nn_dists.push(best.sqrt());
     }
-    nn_dists.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    nn_dists.sort_by(|a, b| a.total_cmp(b));
     let mean_nn: f32 = nn_dists.iter().sum::<f32>() / (n_samples as f32);
     let median_nn: f32 = nn_dists[n_samples / 2];
 
@@ -120,7 +120,7 @@ fn main() -> Result<()> {
         }
         baseline_nn.push(best.sqrt());
     }
-    baseline_nn.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    baseline_nn.sort_by(|a, b| a.total_cmp(b));
     let base_mean: f32 = baseline_nn.iter().sum::<f32>() / (n_samples as f32);
     let base_median: f32 = baseline_nn[n_samples / 2];
 

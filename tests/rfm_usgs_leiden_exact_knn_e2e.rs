@@ -50,7 +50,7 @@ fn exact_knn_graph(points: &[[f32; 3]], k: usize) -> UnGraph<(), f32> {
             .filter(|&j| j != i)
             .map(|j| (j, cosine_distance_unit(points[i], points[j])))
             .collect();
-        dists.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+        dists.sort_by(|a, b| a.1.total_cmp(&b.1));
         for &(j, dist) in dists.iter().take(k) {
             let w = (1.0 - dist).max(0.001); // similarity-like weight
             let _ = g.add_edge(nodes[i], nodes[j], w);
@@ -66,7 +66,7 @@ fn community_size_distribution(labels: &[usize], top_k: usize) -> Vec<f32> {
         *counts.entry(c).or_insert(0) += 1;
     }
     let mut sizes: Vec<f32> = counts.values().map(|&x| x as f32).collect();
-    sizes.sort_by(|a, b| b.partial_cmp(a).unwrap_or(std::cmp::Ordering::Equal));
+    sizes.sort_by(|a, b| b.total_cmp(a));
     let total: f32 = sizes.iter().sum();
     if total > 0.0 {
         for x in &mut sizes {

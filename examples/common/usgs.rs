@@ -158,7 +158,7 @@ pub fn exact_knn_graph(points: &[[f32; 3]], k: usize) -> petgraph::graph::UnGrap
             .filter(|&j| j != i)
             .map(|j| (j, cosine_distance_unit(points[i], points[j])))
             .collect();
-        dists.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+        dists.sort_by(|a, b| a.1.total_cmp(&b.1));
         for &(j, dist) in dists.iter().take(k) {
             let w = (1.0 - dist).max(0.001);
             let _ = g.add_edge(nodes[i], nodes[j], w);
