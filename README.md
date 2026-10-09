@@ -36,7 +36,7 @@ fm_cfg:  steps=800 batch=256 lr=0.008 seed=9 euler_steps=40
 sample_mse_to_assigned_y = 0.0367  (x0 baseline = 0.7818)
 ```
 
-**Minibatch OT coupling**. Rectified flow matching [7] uses a coupling between base and target samples. This example uses Sinkhorn pairing inside each minibatch and reports assigned-target MSE after ODE sampling:
+**Minibatch OT coupling**. Flow matching can pair base and target samples with an OT coupling inside each minibatch (OT-CFM). The `rfm` names in this crate refer to that pairing, not to the reflow procedure of rectified flow [7]. This example uses Sinkhorn pairing inside each minibatch and reports assigned-target MSE after ODE sampling:
 
 ```bash
 cargo run --release --example rfm_minibatch_ot_linear
@@ -96,7 +96,7 @@ See [`examples/README.md`](examples/README.md) for the example map, including di
 
 ## What it provides
 
-**Training**: Semidiscrete FM, rectified flow matching with minibatch OT coupling, time schedules (uniform, U-shaped, logit-normal).
+**Training**: Semidiscrete FM, flow matching with minibatch OT coupling, time schedules (uniform, U-shaped, logit-normal).
 
 **Sampling**: Fixed-step ODE integrators (Euler, Heun) for Euclidean and Riemannian manifolds.
 

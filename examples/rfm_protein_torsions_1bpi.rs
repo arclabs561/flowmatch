@@ -1,4 +1,4 @@
-//! Rectified flow matching on protein torsion data.
+//! Minibatch-OT flow matching on protein torsion data.
 //!
 //! Torsion angles live on a product of circles. This example embeds phi/psi
 //! angles from PDB 1BPI in R^4, trains the linear RFM primitive, and reports JS

@@ -1,6 +1,6 @@
 //! Energy matching for flow matching.
 //!
-//! Energy matching (Akhound-Sadegh et al. 2025) unifies flow matching and energy-based models.
+//! Energy matching (Balcerak et al. 2025, arXiv:2504.10612) unifies flow matching and energy-based models.
 //! Instead of regressing a velocity field directly, a scalar energy function `E(x, t)` is
 //! learned whose gradient gives the velocity: `v(x, t) = -grad_x E(x, t)`.
 //!

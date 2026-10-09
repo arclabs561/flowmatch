@@ -1,4 +1,9 @@
-//! Rectified Flow Matching (RFM) helpers.
+//! Minibatch OT coupling helpers.
+//!
+//! The `rfm` name is historical. These utilities pair samples inside each
+//! minibatch, as in OT-CFM (Tong et al. 2023); they do not implement Liu et
+//! al.'s rectified flow, which re-pairs samples by simulating a trained flow
+//! (reflow).
 //!
 //! In the FM literature, “rectification” is largely about **the coupling** `pi(x_0, x_1)`:
 //! choosing (or improving) which base samples are paired with which target samples so that
@@ -115,7 +120,7 @@ pub(crate) fn greedy_bipartite_match_from_weights(w: &ArrayView2<f32>) -> Result
 /// - `x`: `n×d`
 /// - `y`: `n×d`
 ///
-/// This is a practical “minibatch OT pairing” primitive used in rectified/OT flow matching
+/// This is a practical “minibatch OT pairing” primitive used in OT flow matching
 /// papers (pair within batch, then train on straight lines between paired points).
 pub fn minibatch_ot_greedy_pairing(
     x: &ArrayView2<f32>,
@@ -600,6 +605,69 @@ mod tests {
             assert!(!seen[j]);
             seen[j] = true;
         }
+    }
+
+    /// All permutations of `0..n` (Heap's algorithm), for exact assignment.
+    fn permutations(n: usize) -> Vec<Vec<usize>> {
+        fn heap(k: usize, a: &mut Vec<usize>, out: &mut Vec<Vec<usize>>) {
+            if k <= 1 {
+                out.push(a.clone());
+                return;
+            }
+            for i in 0..k {
+                heap(k - 1, a, out);
+                let j = if k % 2 == 0 { i } else { 0 };
+                a.swap(j, k - 1);
+            }
+        }
+        let mut out = Vec::new();
+        heap(n, &mut (0..n).collect(), &mut out);
+        out
+    }
+
+    #[test]
+    fn sinkhorn_greedy_pairing_cost_is_close_to_exact_assignment() {
+        // Sinkhorn plus greedy rounding is not exact OT (see the rustdoc).
+        // Against brute-force optimal assignment on n = 6 Gaussian batches,
+        // with the default coupling config, its squared-L2 cost must stay
+        // within 5% in aggregate and 25% on every batch.
+        use rand::SeedableRng;
+        use rand_chacha::ChaCha8Rng;
+        use rand_distr::{Distribution, StandardNormal};
+
+        let cfg = crate::sd_fm::RfmMinibatchOtConfig::default();
+        let (n, d) = (6, 2);
+        let perms = permutations(n);
+        let mut rng = ChaCha8Rng::seed_from_u64(5);
+        let (mut total_greedy, mut total_exact) = (0.0f64, 0.0f64);
+        for batch in 0..50 {
+            let x = Array2::from_shape_fn((n, d), |_| StandardNormal.sample(&mut rng));
+            let y = Array2::from_shape_fn((n, d), |_| StandardNormal.sample(&mut rng));
+            let cost = |p: &[usize]| -> f64 {
+                (0..n)
+                    .map(|i| l2_squared(&x.row(i), &y.row(p[i])) as f64)
+                    .sum()
+            };
+            let p =
+                minibatch_ot_greedy_pairing(&x.view(), &y.view(), cfg.reg, cfg.max_iter, cfg.tol)
+                    .unwrap();
+            assert!(is_permutation(&p));
+            let greedy = cost(&p);
+            let exact = perms
+                .iter()
+                .map(|q| cost(q.as_slice()))
+                .fold(f64::INFINITY, f64::min);
+            assert!(
+                greedy <= 1.25 * exact,
+                "batch {batch}: greedy {greedy} vs exact {exact}"
+            );
+            total_greedy += greedy;
+            total_exact += exact;
+        }
+        assert!(
+            total_greedy <= 1.05 * total_exact,
+            "aggregate greedy {total_greedy} vs exact {total_exact}"
+        );
     }
 
     fn is_permutation(p: &[usize]) -> bool {

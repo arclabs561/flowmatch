@@ -1,4 +1,4 @@
-//! Rectified flow matching on earthquake locations.
+//! Minibatch-OT flow matching on earthquake locations.
 //!
 //! USGS latitude/longitude data is embedded in R^3, projected back to S^2
 //! after sampling, and evaluated by entropic OT cost to the weighted support.

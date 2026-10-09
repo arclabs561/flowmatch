@@ -213,7 +213,10 @@ pub(crate) fn validate_training_inputs(
     Ok(b_total)
 }
 
-/// Configuration for minibatch-OT rectified flow matching (RFM) coupling.
+/// Configuration for minibatch-OT flow matching coupling.
+///
+/// The `Rfm` prefix is historical: this is OT-CFM-style minibatch pairing, not
+/// Liu et al.'s rectified flow (no reflow step).
 ///
 /// This config controls the **coupling** computation, not the vector field SGD.
 ///
@@ -269,7 +272,7 @@ pub enum RfmMinibatchPairing {
     },
 }
 
-/// Configuration for the OT coupling step in minibatch rectified flow matching.
+/// Configuration for the OT coupling step in minibatch-OT flow matching.
 #[derive(Debug, Clone)]
 pub struct RfmMinibatchOtConfig {
     /// Entropic regularization `ε` for Sinkhorn (larger = easier, smaller = sharper).
@@ -507,7 +510,8 @@ pub fn train_sd_fm_semidiscrete_linear_with_assignment(
     })
 }
 
-/// Train a **rectified flow matching** (RFM) baseline using **minibatch OT pairing**.
+/// Train a flow matching baseline using **minibatch OT pairing** (named RFM in
+/// this crate; it does not run Liu et al.'s reflow procedure).
 ///
 /// High-level idea (matches the RFM framing in arXiv:2507.17731 / the curated taxonomy):
 /// - sample a minibatch of base noise points `x0_i ~ N(0, I)`

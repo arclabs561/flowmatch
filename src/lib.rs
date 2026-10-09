@@ -1,4 +1,5 @@
 #![warn(missing_docs)]
+#![doc = include_str!("../README.md")]
 //! # flowmatch
 //!
 //! Flow matching as a library primitive.
@@ -64,7 +65,7 @@
 //!
 //! - `flow`: [`VectorField`] trait and [`flow_drift`] primitive (canonical home; was `wass::flow`)
 //! - `sd_fm`: semidiscrete conditional FM training and sampling
-//! - `rfm`: rectified-flow coupling helpers (minibatch OT pairing)
+//! - `rfm`: minibatch OT pairing helpers (OT-CFM-style coupling, not rectified-flow reflow)
 //! - `linear`: simple linear vector-field parameterizations
 //! - `ode`: fixed-step ODE integrators (`Euler`, `Heun`)
 //! - `ot_cfm`: OT-conditional flow matching (mini-batch OT coupling for CFM training)
