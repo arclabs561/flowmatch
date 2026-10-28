@@ -9,7 +9,7 @@
 cargo bench -p flowmatch --bench pairing
 
 # USGS real-data pipeline (OT cost, sliced Wasserstein, short RFM train)
-cargo bench -p flowmatch --bench realdata_usgs
+cargo bench -p flowmatch --bench realdata_usgs --features sheaf-evals
 
 # Protein torsions pipeline (Ramachandran JS + short RFM train)
 cargo bench -p flowmatch --bench realdata_torsions
@@ -22,8 +22,6 @@ Criterion HTML reports are written under `target/criterion/`.
 If profiling CLIs such as `xctrace` are unavailable, or `pprof`/Criterion
 profiling fails with SIGTRAP on your platform, use the timing examples below.
 
-Instead, use the explicit timing breakdown examples:
-
 ```bash
 # From the flowmatch repository root:
 cargo run -p flowmatch --example profile_breakdown_usgs
@@ -34,7 +32,8 @@ These print per-phase timings (sampling, Sinkhorn coupling, SGD) so you can see 
 
 ## Optional: enable pprof in Criterion config (edit benches)
 
-You can wire pprof directly:
+This illustrative configuration requires adding `pprof` as a dev-dependency
+with its Criterion and flamegraph features, then editing the benchmark:
 
 ```rust,ignore
 use pprof::criterion::{PProfProfiler, Output};
