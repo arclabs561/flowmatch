@@ -616,6 +616,7 @@ pub fn train_rfm_minibatch_ot_linear(
 mod tests {
     use super::*;
     use proptest::prelude::*;
+    use rand::Rng;
 
     fn hash_f32_bits(xs: &[f32]) -> u64 {
         // Stable, cheap hash over f32 bit patterns (no floating rounding).
