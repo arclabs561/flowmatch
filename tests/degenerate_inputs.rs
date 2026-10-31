@@ -196,6 +196,7 @@ proptest! {
         d in 1usize..=8,
         seed in 0u64..10000,
     ) {
+        use rand::Rng;
         use rand::SeedableRng;
         use rand_chacha::ChaCha8Rng;
         use rand_distr::{Distribution, StandardNormal};
