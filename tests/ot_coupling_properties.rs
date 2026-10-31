@@ -103,6 +103,74 @@ fn sinkhorn_pairing_beats_random_coupling() {
     );
 }
 
+#[test]
+fn sinkhorn_pairing_survives_far_outlier_target() {
+    // One target ~2000 units away makes C/reg large enough that Sinkhorn does not
+    // reach `tol` within `max_iter`; pairing must still return a permutation.
+    let n = 16;
+    let d = 4;
+    let mut x = Array2::<f32>::zeros((n, d));
+    let mut y = Array2::<f32>::zeros((n, d));
+    for i in 0..n {
+        for k in 0..d {
+            x[[i, k]] = i as f32 * 0.01;
+            y[[i, k]] = i as f32 * 0.01;
+        }
+    }
+    for k in 0..d {
+        y[[n - 1, k]] = 1_000.0;
+    }
+
+    let perm = minibatch_ot_greedy_pairing(&x.view(), &y.view(), 1.0, 2_000, 1e-4)
+        .expect("pairing should not fail on an outlier batch");
+    let mut seen = vec![false; n];
+    for &j in &perm {
+        assert!(!seen[j], "pairing is not a permutation: {perm:?}");
+        seen[j] = true;
+    }
+    assert_eq!(perm.len(), n);
+}
+
+#[test]
+fn sinkhorn_pairing_with_far_outlier_beats_identity() {
+    // Same failure shape as above, but the inliers of `y` are `x` in reverse order, so the
+    // identity pairing is far from optimal. The normalized-cost retry must still recover a
+    // pairing cheaper than identity, not just any permutation.
+    let n = 16;
+    let d = 4;
+    let mut x = Array2::<f32>::zeros((n, d));
+    let mut y = Array2::<f32>::zeros((n, d));
+    for i in 0..n {
+        for k in 0..d {
+            x[[i, k]] = i as f32 * 0.5;
+        }
+    }
+    for j in 0..n - 1 {
+        for k in 0..d {
+            y[[j, k]] = (n - 2 - j) as f32 * 0.5;
+        }
+    }
+    for k in 0..d {
+        y[[n - 1, k]] = 1_000.0;
+    }
+
+    let perm = minibatch_ot_greedy_pairing(&x.view(), &y.view(), 1.0, 2_000, 1e-4)
+        .expect("pairing should not fail on an outlier batch");
+    let mut seen = vec![false; n];
+    for &j in &perm {
+        assert!(!seen[j], "pairing is not a permutation: {perm:?}");
+        seen[j] = true;
+    }
+
+    let identity_perm: Vec<usize> = (0..n).collect();
+    let ot_cost = pairing_cost(&x, &y, &perm);
+    let identity_cost = pairing_cost(&x, &y, &identity_perm);
+    assert!(
+        ot_cost < identity_cost,
+        "outlier-batch pairing should cost less than identity: ot={ot_cost:.4}, identity={identity_cost:.4}, perm={perm:?}"
+    );
+}
+
 // ---------------------------------------------------------------------------
 // Scheduler sensitivity: all schedules produce reasonable training loss
 // ---------------------------------------------------------------------------

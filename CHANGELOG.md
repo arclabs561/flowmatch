@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- `rfm::minibatch_ot_greedy_pairing` (and `ot_cfm::ot_cfm_coupling` through it)
+  no longer returns `Domain("sinkhorn coupling did not converge")` on batches
+  with a far outlier. When Sinkhorn does not converge, it retries once on the
+  cost matrix divided by its maximum, as torchcfm's `normalize_cost` does.
+
 ## [0.1.9] - 2026-07-05
 
 ### Added
