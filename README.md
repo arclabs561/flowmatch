@@ -36,7 +36,7 @@ fm_cfg:  steps=800 batch=256 lr=0.008 seed=9 euler_steps=40
 sample_mse_to_assigned_y = 0.0367  (x0 baseline = 0.7818)
 ```
 
-**Minibatch OT coupling**. Flow matching can pair base and target samples with an OT coupling inside each minibatch (OT-CFM). The `rfm` names in this crate refer to that pairing, not to the reflow procedure of rectified flow [7]. This example uses Sinkhorn pairing inside each minibatch and reports assigned-target MSE after ODE sampling:
+**Minibatch OT coupling**. Flow matching can pair base and target samples with an OT coupling inside each minibatch (OT-CFM). The `rfm` names in this crate refer to that pairing, not to the reflow procedure of rectified flow [5]. This example uses Sinkhorn pairing inside each minibatch and reports assigned-target MSE after ODE sampling:
 
 ```bash
 cargo run --release --example rfm_minibatch_ot_linear
@@ -57,7 +57,7 @@ cargo run --release --example rfm_protein_torsions_1bpi
 Illustrative fixed-seed output:
 
 ```text
-PDB 1BPI φ/ψ (n=56) as a torus via R^4 embedding
+PDB 1BPI phi/psi (n=56) as a torus via R^4 embedding
 Ramachandran histogram JS divergence (lower is better):
 - baseline (Gaussian decode): 0.6391
 - trained  (RFM+minibatch OT): 0.4105
@@ -139,9 +139,7 @@ cargo test -p flowmatch --features sheaf-evals
 2. Lipman et al., [Flow Matching Guide and Code](https://arxiv.org/abs/2412.06264) (2024). Tutorial and code guide
 3. Gat et al., [Discrete Flow Matching](https://proceedings.neurips.cc/paper_files/paper/2024/hash/f0d629a734b56a642701bba7bc8bb3ed-Abstract-Conference.html) (NeurIPS 2024). CTMC-based discrete FM
 4. Chen & Lipman, [Riemannian Flow Matching on General Geometries](https://arxiv.org/abs/2302.03660) (2023)
-5. de Kruiff et al., [Pullback Flow Matching on Data Manifolds](https://arxiv.org/abs/2410.04543) (2024). FM on implicit manifolds without closed-form exp/log maps
-6. Sherry & Smets, [Flow Matching on Lie Groups](https://arxiv.org/abs/2504.00494) (2025). Specialization to SO(3) and SE(3)
-7. Liu et al., [Flow Straight and Fast: Learning to Generate and Transfer Data with Rectified Flow](https://arxiv.org/abs/2209.03003) (2022). Rectified flow
+5. Liu et al., [Flow Straight and Fast: Learning to Generate and Transfer Data with Rectified Flow](https://arxiv.org/abs/2209.03003) (2022). Rectified flow
 
 ## License
 
