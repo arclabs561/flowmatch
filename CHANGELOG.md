@@ -2,12 +2,34 @@
 
 ## [Unreleased]
 
+## [0.1.10] - 2026-11-03
+
 ### Fixed
 
 - `rfm::minibatch_ot_greedy_pairing` (and `ot_cfm::ot_cfm_coupling` through it)
   no longer returns `Domain("sinkhorn coupling did not converge")` on batches
   with a far outlier. When Sinkhorn does not converge, it retries once on the
   cost matrix divided by its maximum, as torchcfm's `normalize_cost` does.
+- Training entry points (ndarray, Burn and Riemannian) now return
+  `Error::Domain` or `Error::Shape` before any update for a non-positive or
+  nonfinite learning rate, nonfinite logit-normal schedule parameters,
+  nonfinite support points or weights, and `sample_x0` output of the wrong
+  length or with nonfinite values.
+- `ode` and `riemannian_ode` Euler and Heun integration return `Error::Shape` when the velocity
+  closure returns a vector whose length differs from the state.
+- `LinearCondField::mse_batch` returns `Error::Domain` for an empty batch or
+  dimension instead of an undefined mean.
+- `simplex::normalize_simplex` sums in `f64`, so large `f32` inputs no longer
+  overflow to infinity.
+- `discrete_ctmc`: the `CosineSq` schedule derivative is exactly zero at
+  `t = 0` and `t = 1`, and conditional rate construction rejects nonfinite or
+  negative rates.
+
+### Changed
+
+- The `sheaf-evals` feature no longer pulls `sheaf`, `serde` or `serde_json`
+  into library builds; they are dev-dependencies used only by the gated
+  examples, tests and bench.
 
 ## [0.1.9] - 2026-07-05
 
