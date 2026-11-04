@@ -60,39 +60,23 @@ fn main() {
         "step", "euler_x", "euler_y", "euler_r", "heun_x", "heun_y", "heun_r"
     );
 
-    let mut xe = x0.clone();
-    let mut xh = x0.clone();
-
+    // Step i is the library integrator run for i steps from x0; step 0 is x0.
+    let state_after = |method: OdeMethod, i: usize| {
+        if i == 0 {
+            x0.clone()
+        } else {
+            integrate_fixed(method, &x0, 0.0, dt, i, velocity).unwrap()
+        }
+    };
     for i in 0..=steps {
+        let xe = state_after(OdeMethod::Euler, i);
+        let xh = state_after(OdeMethod::Heun, i);
         let re = (xe[0] * xe[0] + xe[1] * xe[1]).sqrt();
         let rh = (xh[0] * xh[0] + xh[1] * xh[1]).sqrt();
         println!(
             "{:>4}  {:>10.5}  {:>10.5}  {:>10.5}  {:>10.5}  {:>10.5}  {:>10.5}",
             i, xe[0], xe[1], re, xh[0], xh[1], rh
         );
-
-        if i < steps {
-            // Euler step.
-            let ve = velocity(&xe.view(), 0.0).unwrap();
-            let mut xe_new = xe.clone();
-            for k in 0..2 {
-                xe_new[k] += dt * ve[k];
-            }
-            xe = xe_new;
-
-            // Heun step.
-            let v0 = velocity(&xh.view(), 0.0).unwrap();
-            let mut xh_pred = xh.clone();
-            for k in 0..2 {
-                xh_pred[k] += dt * v0[k];
-            }
-            let v1 = velocity(&xh_pred.view(), 0.0).unwrap();
-            let mut xh_new = xh.clone();
-            for k in 0..2 {
-                xh_new[k] += 0.5 * dt * (v0[k] + v1[k]);
-            }
-            xh = xh_new;
-        }
     }
 
     println!();

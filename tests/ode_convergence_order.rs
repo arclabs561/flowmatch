@@ -65,6 +65,35 @@ fn heun_achieves_second_order_convergence() {
     );
 }
 
+/// On the rotation dx/dt = -y, dy/dt = x, one Euler step multiplies the radius
+/// by exactly sqrt(1 + h^2) and one Heun step by sqrt(1 + h^4/4), so after n
+/// steps the radius is that factor to the n-th power. This is the claim the
+/// `ode_comparison` example prints.
+#[test]
+fn rotation_radius_grows_by_the_amplification_factor() {
+    let velocity = |x: &ndarray::ArrayView1<f32>, _t: f32| -> flowmatch::Result<Array1<f32>> {
+        Ok(Array1::from_vec(vec![-x[1], x[0]]))
+    };
+    let x0 = Array1::from_vec(vec![1.0f32, 0.0]);
+    let total_t = 2.0 * std::f64::consts::PI;
+    for steps in [10usize, 20, 50, 200] {
+        let h = total_t / steps as f64;
+        let cases = [
+            (OdeMethod::Euler, (1.0 + h * h).sqrt()),
+            (OdeMethod::Heun, (1.0 + h.powi(4) / 4.0).sqrt()),
+        ];
+        for (method, factor) in cases {
+            let x = integrate_fixed(method, &x0, 0.0, h as f32, steps, velocity).unwrap();
+            let radius = ((x[0] * x[0] + x[1] * x[1]) as f64).sqrt();
+            let expected = factor.powi(steps as i32);
+            assert!(
+                ((radius - expected) / expected).abs() < 1e-4,
+                "{method:?} steps={steps}: radius {radius} vs {expected}"
+            );
+        }
+    }
+}
+
 /// Same test on a second ODE to confirm rates are not problem-specific.
 ///
 /// dx/dt = cos(t), x(0) = 0. Exact: x(T) = sin(T).
