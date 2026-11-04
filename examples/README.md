@@ -69,7 +69,7 @@ cargo run --release --example profile_breakdown_torsions
 | Feature | Examples |
 |---|---|
 | `burn` | `burn_sd_fm_semidiscrete_linear`, `burn_rfm_minibatch_ot_linear` |
-| `riemannian` | `rfm_poincare_geodesic_ode`, `riemannian_fm_poincare` |
+| `riemannian` | `rfm_poincare_geodesic_ode`, `riemannian_fm_poincare`, `rfm_fisher_simplex` |
 | `sheaf-evals` | `rfm_usgs_earthquakes_cluster_mass`, `rfm_usgs_knn_leiden`, `rfm_usgs_full_pipeline_report` |
 
 ```sh
@@ -77,6 +77,7 @@ cargo run --release --features burn --example burn_sd_fm_semidiscrete_linear
 cargo run --release --features burn --example burn_rfm_minibatch_ot_linear
 cargo run --release --features riemannian --example rfm_poincare_geodesic_ode
 cargo run --release --features riemannian --example riemannian_fm_poincare
+cargo run --release --features riemannian --example rfm_fisher_simplex
 cargo run --release --features sheaf-evals --example rfm_usgs_earthquakes_cluster_mass
 cargo run --release --features sheaf-evals --example rfm_usgs_knn_leiden
 cargo run --release --features sheaf-evals --example rfm_usgs_full_pipeline_report

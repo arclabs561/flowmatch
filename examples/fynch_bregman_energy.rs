@@ -29,8 +29,8 @@ fn main() {
     let shannon_grad = bregman_energy_gradient(&fynch::Shannon, &x.view(), &center.view(), sigma)
         .expect("Shannon gradient");
 
-    println!("x: {x:?}");
-    println!("center: {center:?}");
+    println!("x: {:?}", x.to_vec());
+    println!("center: {:?}", center.to_vec());
     println!("squared-L2 energy via fynch: {l2_energy:.6}");
     println!("squared-L2 energy via logp:  {logp_l2_energy:.6}");
     println!("Shannon energy via fynch:    {shannon_energy:.6}");
