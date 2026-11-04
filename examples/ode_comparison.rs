@@ -96,6 +96,7 @@ fn main() {
     }
 
     println!();
-    println!("Observation: Euler's radius grows each step (energy gain),");
-    println!("while Heun's radius stays near 1.0 (symplectic-like behavior).");
+    println!("Observation: both methods gain radius on this flow. Per step the radius");
+    println!("grows by about h^2/2 for Euler and h^4/8 for Heun (h = step size), so");
+    println!("Heun's error falls much faster as the step count rises.");
 }
