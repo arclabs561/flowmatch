@@ -29,6 +29,30 @@ cargo run --release --example mmd_flow_eval
 cargo run --release --example discrete_ctmc_path_evolution
 ```
 
+## Does the sample cover both moons?
+
+The two-moons example trains on one draw and evaluates against another. It
+reports the mean distance to the nearest point in each direction. Repeating
+one good point can score well from samples to held-out points. The reverse
+direction exposes the missing moon. The fresh draw shows typical distances
+at this sample size. The trained sampler is conditioned on assigned training
+points.
+
+To score your own two-dimensional point sets without training, supply two JSON
+arrays of coordinate pairs. Use the same units for both sets. Here the closest
+sample is five units from the second held-out point:
+
+```sh
+printf '[[0,0],[0,0]]\n' > samples.json
+printf '[[0,0],[3,4]]\n' > held-out.json
+cargo run --release --example rfm_two_moons -- --compare samples.json held-out.json
+# input: samples -> held-out = 0.0000, held-out -> samples = 2.5000
+```
+
+Distances depend on the number of points. Compare methods at the same sample
+size against the same held-out points. Scoring compares every sample with
+every held-out point.
+
 ## Small checked-in datasets
 
 These examples fit and score the same small checked-in data artifacts. Their

@@ -3,8 +3,8 @@
 //! The standard 2D benchmark: transport samples from N(0,I) to a two-moons
 //! distribution using a linear conditional flow field with minibatch OT pairing.
 //!
-//! This is the minimal "does it work on a multimodal target?" sanity check.
-//! The target is synthetic (no external data), so the example is self-contained.
+//! Sampling conditions on assigned training targets. A fresh target draw measures
+//! how well the output covers both moons at this sample size.
 //!
 //! Run:
 //! ```bash
@@ -15,12 +15,14 @@ use flowmatch::sd_fm::{
     train_rfm_minibatch_ot_linear, RfmMinibatchOtConfig, RfmMinibatchPairing, SdFmTrainConfig,
     TimestepSchedule,
 };
-use flowmatch::Result;
 use ndarray::{Array1, Array2};
 use rand::Rng;
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 use rand_distr::{Distribution, Normal, StandardNormal};
+use std::error::Error;
+use std::ffi::OsStr;
+use std::path::Path;
 
 /// Generate `n` samples from a two-moons distribution.
 ///
@@ -47,14 +49,68 @@ fn sample_two_moons(n: usize, noise: f32, seed: u64) -> Array2<f32> {
     out
 }
 
-/// Squared L2 distance between two 2D points.
-fn sq_dist(a: &[f32], b: &[f32]) -> f32 {
-    let dx = a[0] - b[0];
-    let dy = a[1] - b[1];
-    dx * dx + dy * dy
+type Point = [f32; 2];
+
+fn points(array: &Array2<f32>) -> Vec<Point> {
+    array
+        .rows()
+        .into_iter()
+        .map(|row| [row[0], row[1]])
+        .collect()
 }
 
-fn main() -> Result<()> {
+fn mean_nearest(from: &[Point], to: &[Point]) -> f64 {
+    let sum: f64 = from
+        .iter()
+        .map(|&[x, y]| {
+            to.iter()
+                .map(|&[tx, ty]| {
+                    let dx = f64::from(x) - f64::from(tx);
+                    let dy = f64::from(y) - f64::from(ty);
+                    dx * dx + dy * dy
+                })
+                .fold(f64::INFINITY, f64::min)
+                .sqrt()
+        })
+        .sum();
+    sum / from.len() as f64
+}
+
+fn report(label: &str, samples: &[Point], held_out: &[Point]) {
+    println!(
+        "{label}: samples -> held-out = {:.4}, held-out -> samples = {:.4}",
+        mean_nearest(samples, held_out),
+        mean_nearest(held_out, samples)
+    );
+}
+
+fn parse_points(bytes: &[u8]) -> Result<Vec<Point>, Box<dyn Error>> {
+    let points: Vec<Point> = serde_json::from_slice(bytes)?;
+    if points.is_empty() || points.iter().flatten().any(|v| !v.is_finite()) {
+        return Err("expected a nonempty array of finite [x, y] points".into());
+    }
+    Ok(points)
+}
+
+fn read_points(path: &Path) -> Result<Vec<Point>, Box<dyn Error>> {
+    let bytes = std::fs::read(path).map_err(|err| format!("{}: {err}", path.display()))?;
+    parse_points(&bytes).map_err(|err| format!("{}: {err}", path.display()).into())
+}
+
+fn main() -> Result<(), Box<dyn Error>> {
+    let args: Vec<_> = std::env::args_os().skip(1).collect();
+    match args.as_slice() {
+        [] => (),
+        [flag, samples, held_out] if flag == OsStr::new("--compare") => {
+            report(
+                "input",
+                &read_points(Path::new(samples))?,
+                &read_points(Path::new(held_out))?,
+            );
+            return Ok(());
+        }
+        _ => return Err("usage: rfm_two_moons [--compare SAMPLES.json HELD_OUT.json]".into()),
+    }
     let n_target = 500;
     let noise = 0.05f32;
     let target = sample_two_moons(n_target, noise, 42);
@@ -84,54 +140,27 @@ fn main() -> Result<()> {
     let n_samples = 500;
     let (xs, _js) = model.sample(n_samples, 777, fm_cfg.sample_steps)?;
 
-    // Evaluate: for each generated sample, find the nearest target point.
-    // Report mean nearest-neighbor distance (a simple proxy for coverage).
-    let mut nn_dists: Vec<f32> = Vec::with_capacity(n_samples);
-    for i in 0..n_samples {
-        let si = [xs[[i, 0]], xs[[i, 1]]];
-        let mut best = f32::INFINITY;
-        for j in 0..n_target {
-            let tj = [target[[j, 0]], target[[j, 1]]];
-            let d = sq_dist(&si, &tj);
-            if d < best {
-                best = d;
-            }
-        }
-        nn_dists.push(best.sqrt());
-    }
-    nn_dists.sort_by(|a, b| a.total_cmp(b));
-    let mean_nn: f32 = nn_dists.iter().sum::<f32>() / (n_samples as f32);
-    let median_nn: f32 = nn_dists[n_samples / 2];
-
-    // Baseline: raw Gaussian samples (no training).
+    let held_out = points(&sample_two_moons(n_target, noise, 43));
+    let fresh = points(&sample_two_moons(n_samples, noise, 44));
+    let collapsed = vec![[target[[0, 0]], target[[0, 1]]]; n_samples];
     let mut rng = ChaCha8Rng::seed_from_u64(999);
-    let mut baseline_nn: Vec<f32> = Vec::with_capacity(n_samples);
-    for _ in 0..n_samples {
-        let s0: f32 = StandardNormal.sample(&mut rng);
-        let s1: f32 = StandardNormal.sample(&mut rng);
-        let si = [s0, s1];
-        let mut best = f32::INFINITY;
-        for j in 0..n_target {
-            let tj = [target[[j, 0]], target[[j, 1]]];
-            let d = sq_dist(&si, &tj);
-            if d < best {
-                best = d;
-            }
-        }
-        baseline_nn.push(best.sqrt());
-    }
-    baseline_nn.sort_by(|a, b| a.total_cmp(b));
-    let base_mean: f32 = baseline_nn.iter().sum::<f32>() / (n_samples as f32);
-    let base_median: f32 = baseline_nn[n_samples / 2];
+    let gaussian: Vec<Point> = (0..n_samples)
+        .map(|_| {
+            [
+                StandardNormal.sample(&mut rng),
+                StandardNormal.sample(&mut rng),
+            ]
+        })
+        .collect();
 
-    println!("Two-moons flow matching (n_target={n_target}, n_samples={n_samples}, noise={noise})");
-    println!("Nearest-neighbor distance to target (lower is better):");
-    println!("- baseline (N(0,I)):  mean={base_mean:.4}  median={base_median:.4}");
-    println!("- trained  (RFM+OT): mean={mean_nn:.4}  median={median_nn:.4}");
     println!(
-        "- ratio mean trained/baseline: {:.3}",
-        mean_nn / base_mean.max(1e-12)
+        "Two moons (training={n_target}, held-out={n_target}, samples={n_samples}, noise={noise})"
     );
+    println!("Mean nearest-neighbor distances (lower is better in each direction)");
+    report("Gaussian", &gaussian, &held_out);
+    report("one training point repeated", &collapsed, &held_out);
+    report("fresh moons", &fresh, &held_out);
+    report("trained (endpoint-conditioned)", &points(&xs), &held_out);
 
     // Print a few sample trajectories (initial x0, final x1) for inspection.
     let (x0s, x1s, js) = model.sample_with_x0(10, 888, fm_cfg.sample_steps)?;
@@ -148,4 +177,26 @@ fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn repeated_samples_miss_a_mode_in_the_reverse_direction() {
+        let targets = [[0., 0.], [3., 4.]];
+        let repeated = [[0., 0.]; 3];
+        assert_eq!(mean_nearest(&repeated, &targets), 0.);
+        assert_eq!(mean_nearest(&targets, &repeated), 2.5);
+        assert_eq!(mean_nearest(&targets, &targets), 0.);
+    }
+
+    #[test]
+    fn point_files_require_nonempty_finite_pairs() {
+        assert_eq!(parse_points(b"[[0,1.5]]").unwrap(), [[0.0, 1.5]]);
+        for text in ["[]", "[[0]]", "[[0,1,2]]", "[[0,1e100]]"] {
+            assert!(parse_points(text.as_bytes()).is_err(), "{text}");
+        }
+    }
 }
