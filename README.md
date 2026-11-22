@@ -5,11 +5,45 @@
 
 Train conditional vector fields with flow matching.
 
-## Install
+## Try a training step
+
+In an existing Rust project, install the library with `cargo add flowmatch`.
+To try it in a new binary, add `ndarray` 0.16 as well to construct the
+source and target points:
 
 ```sh
-cargo add flowmatch
+cargo new flowmatch-demo
+cd flowmatch-demo
+cargo add flowmatch ndarray@0.16
 ```
+
+Replace `src/main.rs` with this two-point example. The targets arrive in
+reverse order. Minibatch optimal transport pairs each source with the
+nearby target and returns the points and velocities used for training.
+
+```rust
+use flowmatch::ot_cfm::{ot_cfm_training_step, OtCfmConfig};
+use ndarray::array;
+
+fn main() -> flowmatch::Result<()> {
+    let sources = array![[0.0], [10.0]];
+    let targets = array![[12.0], [2.0]];
+    let batch = ot_cfm_training_step(
+        &sources.view(),
+        &targets.view(),
+        &[0.5, 0.5],
+        &OtCfmConfig::default(),
+    )?;
+
+    assert_eq!(batch.coupling, [1, 0]);
+    assert_eq!(batch.x_t, array![[1.0], [11.0]]);
+    assert_eq!(batch.u_t, array![[2.0], [2.0]]);
+    println!("Paired target indices: {:?}", batch.coupling);
+    Ok(())
+}
+```
+
+Run `cargo run`. The program prints `Paired target indices: [1, 0]`.
 
 ## Problem
 
@@ -20,6 +54,14 @@ and evaluation metrics. Riemannian training and integration are experimental
 and feature-gated. Experimental CTMC primitives are included by default.
 
 ## Examples
+
+The complete training and sampling examples ship in the source repository.
+From a directory of your choice, clone it and run the commands below there:
+
+```sh
+git clone https://github.com/arclabs561/flowmatch.git
+cd flowmatch
+```
 
 **Transport noise to discrete targets** (simplest case). Semidiscrete FM pairs Gaussian noise with fixed target points via optimal transport, trains a linear conditional field, and integrates an ODE to produce samples:
 
@@ -92,7 +134,7 @@ Some generated samples (lat, lon):
 cargo run --release --example rfm_poincare_geodesic_ode --features riemannian
 ```
 
-See [`examples/README.md`](examples/README.md) for the example map, including discrete CTMC, two-moons, conditional 2D, Burn backend variants (`--features burn`), Riemannian Poincare disk (`--features riemannian`), and cluster/community evaluation (`--features sheaf-evals`).
+See [`examples/README.md`](https://github.com/arclabs561/flowmatch/blob/main/examples/README.md) for the example map, including discrete CTMC, two-moons, conditional 2D, Burn backend variants (`--features burn`), Riemannian Poincare disk (`--features riemannian`), and cluster/community evaluation (`--features sheaf-evals`).
 
 ## What it provides
 
@@ -115,9 +157,8 @@ establish unconditional generation or a general coupling improvement.
 
 ## Status
 
-Declared MSRV: Rust 1.80 for the default feature set; it is not CI-validated.
-The current locked macOS resolution of the optional `burn` backend requires
-Rust 1.88 or newer.
+Use stable Rust to run the examples and feature builds. The manifest declares
+Rust 1.80 for the default library, and CI tests stable Rust.
 
 The protein and earthquake examples train and score against small checked-in
 supports. They demonstrate the training and evaluation paths; their metrics do
@@ -138,7 +179,7 @@ cargo test -p flowmatch --features sheaf-evals
 1. Lipman et al., [Flow Matching for Generative Modeling](https://arxiv.org/abs/2210.02747) (2022)
 2. Lipman et al., [Flow Matching Guide and Code](https://arxiv.org/abs/2412.06264) (2024). Tutorial and code guide
 3. Gat et al., [Discrete Flow Matching](https://proceedings.neurips.cc/paper_files/paper/2024/hash/f0d629a734b56a642701bba7bc8bb3ed-Abstract-Conference.html) (NeurIPS 2024). CTMC-based discrete FM
-4. Chen & Lipman, [Riemannian Flow Matching on General Geometries](https://arxiv.org/abs/2302.03660) (2023)
+4. Chen & Lipman, [Flow Matching on General Geometries](https://arxiv.org/abs/2302.03660) (2023)
 5. Liu et al., [Flow Straight and Fast: Learning to Generate and Transfer Data with Rectified Flow](https://arxiv.org/abs/2209.03003) (2022). Rectified flow
 
 ## License

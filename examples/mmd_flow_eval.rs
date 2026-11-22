@@ -43,7 +43,9 @@ fn main() {
 
     // Generate samples via the trained model's ODE integrator
     let n_gen = 200;
-    let (generated_arr, _js) = trained.sample(n_gen, 99, 50).expect("sampling failed");
+    let (noise_arr, generated_arr, _js) = trained
+        .sample_with_x0(n_gen, 99, 50)
+        .expect("sampling failed");
 
     // Convert to Vec<Vec<f64>> for rkhs MMD
     let generated: Vec<Vec<f64>> = (0..generated_arr.nrows())
@@ -54,20 +56,18 @@ fn main() {
         .map(|i| target.row(i).iter().map(|&v| v as f64).collect())
         .collect();
 
-    // Also generate "noise" baseline (random N(0,1) points)
-    let noise: Vec<Vec<f64>> = (0..n_gen)
-        .map(|i| {
-            // deterministic pseudo-random for reproducibility
-            let s = i as f64 * 0.1;
-            vec![s.sin() * 3.0, s.cos() * 3.0]
-        })
+    // Compare each generated endpoint with the same trajectory's Gaussian start.
+    let noise: Vec<Vec<f64>> = noise_arr
+        .rows()
+        .into_iter()
+        .map(|row| row.iter().copied().map(f64::from).collect())
         .collect();
 
     // MMD at different bandwidths
     println!("MMD^2 (unbiased estimate):\n");
     println!(
         "  {:>10} | {:>18} | {:>18}",
-        "bandwidth", "noise vs target", "generated vs target"
+        "bandwidth", "initial vs target", "generated vs target"
     );
     println!("  {:-<10}-+-{:-<18}-+-{:-<18}", "", "", "");
 
