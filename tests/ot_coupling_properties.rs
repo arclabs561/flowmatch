@@ -42,20 +42,9 @@ fn gaussian_points(n: usize, d: usize, seed: u64) -> Array2<f32> {
     x
 }
 
-/// Total squared L2 cost of a pairing: sum_i ||x[i] - y[perm[i]]||^2.
-fn pairing_cost(x: &Array2<f32>, y: &Array2<f32>, perm: &[usize]) -> f64 {
-    let n = x.nrows();
-    let d = x.ncols();
-    let mut cost = 0.0f64;
-    for i in 0..n {
-        let j = perm[i];
-        for k in 0..d {
-            let r = (x[[i, k]] - y[[j, k]]) as f64;
-            cost += r * r;
-        }
-    }
-    cost / n as f64
-}
+#[path = "../examples/common/coupling_cost.rs"]
+mod coupling_cost;
+use coupling_cost::{independent_cost, pairing_cost};
 
 // ---------------------------------------------------------------------------
 // OT coupling monotonicity: lower reg -> lower transport cost
@@ -84,7 +73,7 @@ fn sinkhorn_cost_decreases_with_lower_regularization() {
 }
 
 #[test]
-fn sinkhorn_pairing_beats_random_coupling() {
+fn sinkhorn_pairing_beats_independent_cost_on_seeded_batch() {
     let n = 16;
     let d = 4;
     let x = gaussian_points(n, d, 42);
@@ -93,14 +82,26 @@ fn sinkhorn_pairing_beats_random_coupling() {
     let ot_perm = minibatch_ot_greedy_pairing(&x.view(), &y.view(), 0.5, 500, 1e-3).unwrap();
     let ot_cost = pairing_cost(&x, &y, &ot_perm);
 
-    // Identity (random-ish) coupling.
-    let identity_perm: Vec<usize> = (0..n).collect();
-    let identity_cost = pairing_cost(&x, &y, &identity_perm);
-
+    let independent = independent_cost(&x, &y);
     assert!(
-        ot_cost <= identity_cost,
-        "OT pairing should have lower cost than identity: ot={ot_cost:.4}, identity={identity_cost:.4}"
+        ot_cost < independent,
+        "paired={ot_cost:.4}, independent={independent:.4}"
     );
+}
+
+#[test]
+fn independent_cost_distinguishes_a_crossed_pairing_from_exact_transport() {
+    let x = ndarray::array![[-1.0, 0.0], [1.0, 0.0]];
+    let y = ndarray::array![[1.0, 0.0], [-1.0, 0.0]];
+    let pairing = minibatch_ot_greedy_pairing(&x.view(), &y.view(), 1.0, 500, 1e-3).unwrap();
+
+    assert_eq!(pairing_cost(&x, &y, &pairing), 0.0);
+    assert_eq!(pairing_cost(&x, &y, &[0, 1]), 4.0);
+    assert_eq!(independent_cost(&x, &y), 2.0);
+    // Reordering the target rows changes the identity cost from 4 to 0,
+    // while the independent product of the same marginals stays unchanged.
+    assert_eq!(pairing_cost(&x, &x, &[0, 1]), 0.0);
+    assert_eq!(independent_cost(&x, &x), 2.0);
 }
 
 #[test]
