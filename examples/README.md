@@ -52,6 +52,12 @@ from the four equally weighted target points. Enumerating each point once would
 force all four counts to be equal and invalidate the permutation test. The test
 uses the endpoints only, fixes the RBF bandwidth at 2, and shuffles labels 500
 times. The unbiased estimate of squared MMD can be negative on finite samples.
+The coverage controls draw 200 fresh points from all four modes or from the
+three remaining modes after omitting (−3, −3). Every control sample lies on
+the target support. With the same reference and bandwidth of 2, the fixed-seed
+MMD² estimates are −0.001802 and 0.100497 respectively. The trained endpoints
+score 0.106377 on this run. Similar scores can have different causes, so that
+value alone cannot identify a missing mode in the trained sample.
 [Gretton et al., Section 3](https://jmlr.org/papers/v13/gretton12a.html)
 
 ## Does the sample cover both moons?
