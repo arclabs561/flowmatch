@@ -51,7 +51,7 @@ proptest = "1.5"
 criterion = { version = "0.5", features = ["html_reports"] }
 petgraph = "0.6"
 hyperball = "0.1"
-rkhs = "0.3.0"
+rkhs = "0.3.1"
 infogeom = { version = "0.2.1", features = ["manifold"] }
 fynch = { version = "0.2.2", features = ["logp"] }
 serde = { version = "1.0", features = ["derive"] }

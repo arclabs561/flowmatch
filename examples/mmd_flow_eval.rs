@@ -11,8 +11,29 @@
 
 use flowmatch::sd_fm::{SdFmTrainConfig, TimestepSchedule};
 use ndarray::{Array1, Array2};
-use rkhs::{mmd_unbiased, rbf};
+use rand::distr::{weighted::WeightedIndex, Distribution};
+use rand::SeedableRng;
+use rand_chacha::ChaCha8Rng;
+use rkhs::{mmd_permutation_test_seeded, mmd_unbiased, rbf};
 use wass::semidiscrete::SemidiscreteSgdConfig;
+
+// Draw independently of the noise and endpoints. Enumerating the support once
+// forces distinct target atoms, unlike sampling from this discrete distribution.
+fn target_draws(
+    support: &Array2<f32>,
+    weights: &Array1<f32>,
+    count: usize,
+    seed: u64,
+) -> Vec<Vec<f64>> {
+    let distribution = WeightedIndex::new(weights.iter().copied()).expect("valid target weights");
+    let mut rng = ChaCha8Rng::seed_from_u64(seed);
+    (0..count)
+        .map(|_| {
+            let row = support.row(distribution.sample(&mut rng));
+            row.iter().copied().map(f64::from).collect()
+        })
+        .collect()
+}
 
 fn main() {
     println!("=== MMD Evaluation of Flow Matching ===\n");
@@ -52,9 +73,7 @@ fn main() {
         .map(|i| generated_arr.row(i).iter().map(|&v| v as f64).collect())
         .collect();
 
-    let target_vecs: Vec<Vec<f64>> = (0..target.nrows())
-        .map(|i| target.row(i).iter().map(|&v| v as f64).collect())
-        .collect();
+    let reference = target_draws(&target, &b, n_gen, 100);
 
     // Compare each generated endpoint with the same trajectory's Gaussian start.
     let noise: Vec<Vec<f64>> = noise_arr
@@ -64,7 +83,7 @@ fn main() {
         .collect();
 
     // MMD at different bandwidths
-    println!("MMD^2 (unbiased estimate):\n");
+    println!("MMD^2 (unbiased estimate, 200 independent target draws):\n");
     println!(
         "  {:>10} | {:>18} | {:>18}",
         "bandwidth", "initial vs target", "generated vs target"
@@ -73,19 +92,31 @@ fn main() {
 
     for &bw in &[0.5, 1.0, 2.0, 5.0] {
         let kernel = |a: &[f64], b: &[f64]| rbf(a, b, bw);
-        let mmd_noise = mmd_unbiased(&noise, &target_vecs, kernel);
-        let mmd_gen = mmd_unbiased(&generated, &target_vecs, kernel);
+        let mmd_noise = mmd_unbiased(&noise, &reference, kernel);
+        let mmd_gen = mmd_unbiased(&generated, &reference, kernel);
         println!("  {:10.1} | {:18.6} | {:18.6}", bw, mmd_noise, mmd_gen);
     }
 
     // Permutation test: is the generated distribution indistinguishable from target?
     let (mmd_val, p_value) =
-        rkhs::mmd_permutation_test(&generated, &target_vecs, |a, b| rbf(a, b, 2.0), 500);
+        mmd_permutation_test_seeded(&generated, &reference, |a, b| rbf(a, b, 2.0), 500, 101);
     println!("\nPermutation test (bw=2.0, 500 permutations):");
     println!("  MMD^2 = {mmd_val:.6}, p-value = {p_value:.4}");
     if p_value > 0.05 {
         println!("  decision at alpha=0.05: do not reject equal-distribution null");
     } else {
         println!("  decision at alpha=0.05: reject equal-distribution null");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn reference_draws_repeat_positive_mass_atoms_and_skip_zero_mass() {
+        let support = ndarray::array![[0.], [1.], [2.]];
+        let weights = ndarray::array![0., 1., 0.];
+        assert_eq!(target_draws(&support, &weights, 8, 100), vec![vec![1.]; 8]);
     }
 }
