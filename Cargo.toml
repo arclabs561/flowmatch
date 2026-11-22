@@ -53,7 +53,7 @@ petgraph = "0.6"
 hyperball = "0.1"
 rkhs = "0.3.0"
 infogeom = { version = "0.2.1", features = ["manifold"] }
-fynch = { version = "0.2.2", features = ["logp"] }
+fynch = { version = "0.3.2", features = ["logp"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 sheaf = { version = "0.1.9", default-features = false, features = ["cluster", "community", "knn-graph", "metrics", "wass"] }
