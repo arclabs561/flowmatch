@@ -33,8 +33,12 @@ cargo run --release --example discrete_ctmc_path_evolution
 ```
 
 In `mmd_flow_eval`, the two MMD columns compare the same 200 trajectories
-before and after integration against the four training targets. The unbiased
-estimate of squared MMD can be negative on finite samples.
+before and after integration against 200 independent draws with replacement
+from the four equally weighted target points. Enumerating each point once would
+force all four counts to be equal and invalidate the permutation test. The test
+uses the endpoints only, fixes the RBF bandwidth at 2, and shuffles labels 500
+times. The unbiased estimate of squared MMD can be negative on finite samples.
+[Gretton et al., Section 3](https://jmlr.org/papers/v13/gretton12a.html)
 
 ## Does the sample cover both moons?
 
