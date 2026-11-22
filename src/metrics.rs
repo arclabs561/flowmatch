@@ -76,10 +76,10 @@ pub fn ot_cost_samples_to_weighted_support(
     if b.len() != n {
         return Err(Error::Shape("b length must match y.nrows()"));
     }
-    if b.iter().any(|&x| x < 0.0) {
-        return Err(Error::Domain("b must be nonnegative"));
+    if b.iter().any(|&x| !x.is_finite() || x < 0.0) {
+        return Err(Error::Domain("b must be finite and nonnegative"));
     }
-    let bs = b.sum();
+    let bs: f64 = b.iter().map(|&weight| f64::from(weight)).sum();
     if bs <= 0.0 {
         return Err(Error::Domain("b must have positive total mass"));
     }
@@ -94,7 +94,7 @@ pub fn ot_cost_samples_to_weighted_support(
     }
 
     let a = Array1::<f32>::from_elem(m, 1.0 / (m as f32));
-    let b = b.to_owned() / bs;
+    let b = b.mapv(|weight| (f64::from(weight) / bs) as f32);
 
     let cost: Array2<f32> = wass::euclidean_cost_matrix(&xs.to_owned(), &y.to_owned());
     let (_plan, dist, _iters) =
@@ -107,6 +107,33 @@ pub fn ot_cost_samples_to_weighted_support(
 mod tests {
     use super::*;
     use proptest::prelude::*;
+
+    #[test]
+    fn ot_cost_is_invariant_to_large_finite_weight_scales() -> Result<()> {
+        let xs = ndarray::array![[0.0]];
+        let y = ndarray::array![[1.0], [2.0]];
+        let cost = |weights: [f32; 2]| {
+            ot_cost_samples_to_weighted_support(
+                &xs.view(),
+                &y.view(),
+                &ArrayView1::from(&weights[..]),
+                1.0,
+                1000,
+                1e-5,
+            )
+        };
+
+        let expected = cost([1.0, 1.0])?;
+        assert!(expected > 0.0);
+        assert!((cost([f32::MAX, f32::MAX])? - expected).abs() < 1e-5);
+        for invalid in [f32::NAN, f32::INFINITY] {
+            assert!(matches!(
+                cost([1.0, invalid]),
+                Err(Error::Domain("b must be finite and nonnegative"))
+            ));
+        }
+        Ok(())
+    }
 
     #[test]
     fn js_hist_is_symmetric_and_bounded() -> Result<()> {
