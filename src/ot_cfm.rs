@@ -1,8 +1,8 @@
 //! OT-conditional flow matching (OT-CFM).
 //!
-//! Standard CFM pairs source `x0` and target `x1` samples independently (random permutation).
-//! OT-CFM computes a mini-batch optimal transport coupling between them first, producing
-//! straighter flow paths and faster training convergence.
+//! This implementation computes an entropically regularized minibatch transport plan
+//! and greedily rounds it to a one-to-one pairing. Training targets interpolate
+//! linearly between paired endpoints. The learned field determines the sampled trajectories.
 //!
 //! Reference: Tong et al. 2023, "Improving and Generalizing Flow-Based Generative Models
 //! with Minibatch Optimal Transport" (TorchCFM).

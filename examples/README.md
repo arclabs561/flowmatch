@@ -32,6 +32,20 @@ cargo run --release --example mmd_flow_eval
 cargo run --release --example discrete_ctmc_path_evolution
 ```
 
+In `ot_cfm_training_loop`, the paired column averages squared Euclidean
+displacement across the 32 training pairs. The independent column averages
+the same quantity across all 1,024 source–target combinations in that batch.
+Both describe training endpoints. The separate Heun score measures distance
+to the center supplied to the field on each of its 40 evaluations per sample.
+
+Tong et al. sample minibatch pairs from an OT plan and fit a marginal field
+with state and time as inputs. Their exact OT-CFM implementation uses EMD.
+This example greedily rounds a Sinkhorn plan and supplies the target to its
+linear field during training and sampling. Measuring learned trajectory
+curvature or the effect of pairing on convergence requires a separate experiment.
+[Tong et al., Algorithm 3](https://arxiv.org/html/2302.00482#alg3) ·
+[TorchCFM matcher](https://github.com/atong01/conditional-flow-matching/blob/7c653857de4c25b979a740ef8b6a5d5ddb09b6c1/torchcfm/conditional_flow_matching.py)
+
 In `mmd_flow_eval`, the two MMD columns compare the same 200 trajectories
 before and after integration against the four training targets. The unbiased
 estimate of squared MMD can be negative on finite samples.
