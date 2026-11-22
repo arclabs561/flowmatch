@@ -237,8 +237,16 @@ pub fn minibatch_ot_selective_pairing(
     let cost = sq_euclidean_cost_matrix_from_views(x, y)?;
     let a = Array1::<f32>::from_elem(n, 1.0 / n as f32);
     let b = Array1::<f32>::from_elem(n, 1.0 / n as f32);
+    // Subtract a per-column constant before solving. Balanced column marginals
+    // make this an additive constant in the objective, preserving the plan and
+    // regularization while reducing cancellation for distant target columns.
+    let mut centered = cost.clone();
+    for mut column in centered.columns_mut() {
+        let min = column.iter().copied().fold(f32::INFINITY, f32::min);
+        column.mapv_inplace(|c| c - min);
+    }
     let (plan, _dist, _iters) =
-        wass::sinkhorn_log_with_convergence(&a, &b, &cost, reg, max_iter, tol)
+        wass::sinkhorn_log_with_convergence(&a, &b, &centered, reg, max_iter, tol)
             .map_err(|_| Error::Domain("sinkhorn coupling did not converge"))?;
 
     // Fallback to uniform plan if Sinkhorn produced a degenerate result.
@@ -1273,7 +1281,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "minibatch_ot_selective_pairing has no non-convergence fallback; a normalized-cost retry at reg=1 gives a near-uniform plan that still uses the outlier column"]
     fn sinkhorn_selective_avoids_forcing_outlier_column() {
         let n = 16usize;
         let d = 4usize;
