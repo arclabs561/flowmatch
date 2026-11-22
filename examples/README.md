@@ -5,6 +5,9 @@ not paper reproductions or benchmark evidence.
 
 ## Where to start
 
+Run these commands from the repository root with stable Rust and Cargo.
+The default examples use the checked-in data or generate seeded inputs.
+
 | I want to... | Run |
 |---|---|
 | See the smallest semidiscrete flow matching loop | `sd_fm_semidiscrete_linear` |
