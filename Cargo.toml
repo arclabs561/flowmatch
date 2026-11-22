@@ -42,7 +42,7 @@ wass = "0.2.2"
 skel = { version = "0.1", optional = true }
 burn-core = { version = "0.20.0", default-features = false, features = ["std"], optional = true }
 burn-autodiff = { version = "0.20.0", default-features = false, features = ["std"], optional = true }
-burn-ndarray = { version = "0.20.0", default-features = true, optional = true }
+burn-ndarray = { version = "0.21.0", default-features = true, optional = true }
 burn-nn = { version = "0.20.0", default-features = false, features = ["std"], optional = true }
 burn-optim = { version = "0.20.0", default-features = false, features = ["std"], optional = true }
 
