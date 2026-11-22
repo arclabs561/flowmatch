@@ -65,23 +65,23 @@ pub fn integrate_fixed(
     }
 
     let mut x = x0.clone();
-    let mut t = t0;
+    // Use the fixed grid directly so rounding from earlier steps does not shift later times.
+    let time_at = |step: usize| t0 + dt * step as f32;
 
     match method {
         OdeMethod::Euler => {
-            for _ in 0..steps {
-                let v = f(&x.view(), t)?;
+            for step in 0..steps {
+                let v = f(&x.view(), time_at(step))?;
                 validate_velocity_len(v.len(), x.len())?;
                 // x += dt * v
                 for i in 0..x.len() {
                     x[i] += dt * v[i];
                 }
-                t += dt;
             }
         }
         OdeMethod::Heun => {
-            for _ in 0..steps {
-                let v0 = f(&x.view(), t)?;
+            for step in 0..steps {
+                let v0 = f(&x.view(), time_at(step))?;
                 validate_velocity_len(v0.len(), x.len())?;
 
                 // predictor
@@ -91,13 +91,11 @@ pub fn integrate_fixed(
                 }
 
                 // corrector
-                let v1 = f(&x_pred.view(), t + dt)?;
+                let v1 = f(&x_pred.view(), time_at(step + 1))?;
                 validate_velocity_len(v1.len(), x.len())?;
                 for i in 0..x.len() {
                     x[i] += 0.5 * dt * (v0[i] + v1[i]);
                 }
-
-                t += dt;
             }
         }
     }
@@ -115,6 +113,18 @@ mod tests {
             matches!(result, Err(crate::Error::Shape(VELOCITY_SHAPE_ERROR))),
             "expected velocity shape error, got {result:?}"
         );
+    }
+
+    #[test]
+    fn heun_can_use_a_field_defined_only_on_the_unit_interval() {
+        let result = integrate_fixed(OdeMethod::Heun, &Array1::zeros(1), 0.0, 0.1, 10, |_x, t| {
+            if !(0.0..=1.0).contains(&t) {
+                return Err(crate::Error::Domain("time outside the unit interval"));
+            }
+            Ok(ndarray::array![t])
+        })
+        .unwrap();
+        assert!((result[0] - 0.5).abs() < 1e-6);
     }
 
     #[test]
