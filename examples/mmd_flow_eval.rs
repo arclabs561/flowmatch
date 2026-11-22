@@ -97,6 +97,21 @@ fn main() {
         println!("  {:10.1} | {:18.6} | {:18.6}", bw, mmd_noise, mmd_gen);
     }
 
+    // Both controls sample actual support points, so nearest-support distance is
+    // identically zero. Removing one mode changes their probabilities.
+    let fresh = target_draws(&target, &b, n_gen, 102);
+    let missing = target_draws(&target, &ndarray::array![1., 1., 1., 0.], n_gen, 102);
+    let kernel = |a: &[f64], b: &[f64]| rbf(a, b, 2.0);
+    println!("\nCoverage controls (MMD^2, bw=2.0, same target reference):");
+    println!(
+        "  fresh four-mode sample: {:.6}",
+        mmd_unbiased(&fresh, &reference, kernel)
+    );
+    println!(
+        "  missing (-3,-3) mode:   {:.6}",
+        mmd_unbiased(&missing, &reference, kernel)
+    );
+
     // Permutation test: is the generated distribution indistinguishable from target?
     let (mmd_val, p_value) =
         mmd_permutation_test_seeded(&generated, &reference, |a, b| rbf(a, b, 2.0), 500, 101);
