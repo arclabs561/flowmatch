@@ -17,7 +17,7 @@ The default examples use the checked-in data or generate seeded inputs.
 | Add class conditioning | `rfm_conditional_2d` |
 | Use Fenchel-Young regularizers as Bregman energies | `fynch_bregman_energy` |
 | Inspect the low-level OT-CFM training step | `ot_cfm_training_loop` |
-| Evaluate samples with MMD | `mmd_flow_eval` |
+| Compare Gaussian starts and their trained endpoints with the four-point target using MMD | `mmd_flow_eval` |
 | See discrete CTMC path evolution | `discrete_ctmc_path_evolution` |
 
 ```sh
@@ -31,6 +31,10 @@ cargo run --release --example ot_cfm_training_loop
 cargo run --release --example mmd_flow_eval
 cargo run --release --example discrete_ctmc_path_evolution
 ```
+
+In `mmd_flow_eval`, the two MMD columns compare the same 200 trajectories
+before and after integration against the four training targets. The unbiased
+estimate of squared MMD can be negative on finite samples.
 
 ## Does the sample cover both moons?
 
@@ -58,7 +62,8 @@ every held-out point.
 
 ## Small checked-in datasets
 
-These examples fit and score the same small checked-in data artifacts. Their
+The torsion and earthquake examples fit and score checked-in CSV data.
+The token example builds embeddings from two short documents in its source. Their
 metrics are distributional comparisons, not out-of-sample quality estimates or
 domain predictions.
 
