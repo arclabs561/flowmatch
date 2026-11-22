@@ -1,7 +1,11 @@
 //! OT-CFM training loop using the low-level coupling + training step API.
 //!
 //! Trains a linear conditional vector field on a 2D four-cluster target,
-//! using OT-coupled pairings for straighter flow trajectories.
+//! using a greedy permutation of the minibatch Sinkhorn plan. Reports training
+//! pair displacement and endpoint-conditioned sampling error.
+
+#[path = "common/coupling_cost.rs"]
+mod coupling_cost;
 
 use flowmatch::linear::LinearCondField;
 use flowmatch::ode::{integrate_fixed, OdeMethod};
@@ -73,7 +77,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         if step % 50 == 0 || step == steps - 1 {
             let avg_dist = evaluate_sampling(&field, &centers, &mut rng)?;
-            println!("Step {step:>3}: avg dist to center = {avg_dist:.4}");
+            let paired = coupling_cost::pairing_cost(&x0, &x1, &targets.coupling);
+            let independent = coupling_cost::independent_cost(&x0, &x1);
+            println!("Step {step:>3}: mean squared training displacement: paired={paired:.4}, independent={independent:.4}");
+            println!(
+                "          mean distance to supplied center after Heun sampling={avg_dist:.4}"
+            );
         }
     }
 
