@@ -48,23 +48,23 @@ where
     }
 
     let mut x = x0.clone();
-    let mut t = t0;
+    // Use the fixed grid directly so rounding from earlier steps does not shift later times.
+    let time_at = |step: usize| t0 + dt * step as f64;
 
     match method {
         OdeMethod::Euler => {
-            for _ in 0..steps {
-                let v = f(&x.view(), t);
+            for step in 0..steps {
+                let v = f(&x.view(), time_at(step));
                 validate_velocity_len(v.len(), x.len())?;
                 let step = v.mapv(|u| u * dt);
                 x = manifold.exp_map(&x.view(), &step.view());
                 // Project back onto manifold to correct numerical drift.
                 x = manifold.project(&x.view());
-                t += dt;
             }
         }
         OdeMethod::Heun => {
-            for _ in 0..steps {
-                let v0 = f(&x.view(), t);
+            for step in 0..steps {
+                let v0 = f(&x.view(), time_at(step));
                 validate_velocity_len(v0.len(), x.len())?;
 
                 // predictor (Euler)
@@ -73,7 +73,7 @@ where
                 let x_pred = manifold.project(&x_pred.view());
 
                 // corrector velocity lives in T_{x_pred} M
-                let v1 = f(&x_pred.view(), t + dt);
+                let v1 = f(&x_pred.view(), time_at(step + 1));
                 validate_velocity_len(v1.len(), x.len())?;
 
                 // Bring v1 back to T_x M so we can average in one tangent space.
@@ -84,8 +84,6 @@ where
                 x = manifold.exp_map(&x.view(), &step.view());
                 // Project back onto manifold to correct numerical drift.
                 x = manifold.project(&x.view());
-
-                t += dt;
             }
         }
     }
@@ -109,6 +107,27 @@ mod tests {
             ),
             "expected velocity shape error, got {result:?}"
         );
+    }
+
+    #[test]
+    fn heun_samples_the_unit_interval_without_time_drift() {
+        let manifold = PoincareBall::<f64>::new(1.0);
+        let mut last_time = 0.0;
+        integrate_fixed_manifold(
+            OdeMethod::Heun,
+            &manifold,
+            &Array1::zeros(2),
+            0.0,
+            0.05,
+            20,
+            |_x, t| {
+                assert!((0.0..=1.0).contains(&t));
+                last_time = t;
+                Array1::zeros(2)
+            },
+        )
+        .unwrap();
+        assert_eq!(last_time, 1.0);
     }
 
     #[test]
